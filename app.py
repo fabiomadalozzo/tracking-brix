@@ -370,13 +370,13 @@ def filtrar_dados_por_cliente(df, usuario_info):
         return df[df['CLIENTE'] == usuario_info["cliente_vinculado"]]
 
 def colorir_linha(row):
-    """Aplica cores baseado no canal RFB"""
+    """Aplica cores baseado no canal RFB com texto preto forçado"""
     if row['CANAL RFB'] == 'VERDE':
-        return ['background-color: #d5f4e6'] * len(row)
+        return ['background-color: #d5f4e6; color: #000000 !important; font-weight: bold;'] * len(row)
     elif row['CANAL RFB'] == 'VERMELHO':
-        return ['background-color: #fadbd8'] * len(row)
+        return ['background-color: #fadbd8; color: #000000 !important; font-weight: bold;'] * len(row)
     else:
-        return [''] * len(row)
+        return ['color: #000000 !important;'] * len(row)
 
 def gerar_usuario_automatico(razao_social):
     """Gera usuário automático baseado na razão social"""
