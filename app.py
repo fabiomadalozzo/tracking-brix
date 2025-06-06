@@ -16,7 +16,7 @@ import base64
 
 # Configuração da página
 st.set_page_config(
-    page_title="🚢 Sistema BRIX - Tracking Persistente",
+    page_title="🚢 Sistema BRIX - Tracking Marítimo e Rodoviário",
     page_icon="🚢", 
     layout="wide",
     initial_sidebar_state="expanded"
@@ -25,25 +25,6 @@ st.set_page_config(
 # CSS personalizado + melhorias mobile
 st.markdown("""
 <style>
-    /* FIX: Cor da tabela - texto preto */
-    .stDataFrame {
-        color: #000000 !important;
-    }
-    
-    .stDataFrame table {
-        color: #000000 !important;
-        background-color: #ffffff !important;
-    }
-    
-    .stDataFrame td, .stDataFrame th {
-        color: #000000 !important;
-        background-color: #ffffff !important;
-    }
-    
-    /* Garantir que células com cor de fundo mantenham texto legível */
-    .stDataFrame td[style*="background-color"] {
-        color: #000000 !important;
-    }
     .main-header {
         background: linear-gradient(90deg, #2c3e50 0%, #3498db 100%);
         padding: 2rem;
@@ -102,7 +83,30 @@ st.markdown("""
         text-align: center;
     }
     
-    /* Melhorias para mobile */
+    /* FIX CRÍTICO: Tabela com texto preto SEMPRE */
+    .stDataFrame, .stDataFrame * {
+        color: #000000 !important;
+        background-color: #ffffff !important;
+    }
+    
+    .stDataFrame table, .stDataFrame table * {
+        color: #000000 !important;
+        background-color: #ffffff !important;
+    }
+    
+    .stDataFrame td, .stDataFrame th, .stDataFrame tr {
+        color: #000000 !important;
+        background-color: #ffffff !important;
+        border-color: #cccccc !important;
+    }
+    
+    /* Forçar texto preto mesmo com cores de fundo */
+    .stDataFrame td[style*="background-color"] {
+        color: #000000 !important;
+        font-weight: bold !important;
+    }
+    
+    /* Fix específico para mobile */
     @media (max-width: 768px) {
         .main-header {
             padding: 1.5rem 1rem;
@@ -126,6 +130,18 @@ st.markdown("""
             color: #000000 !important;
             background-color: #ffffff !important;
         }
+        
+        /* FIX MOBILE: Tabela com texto preto forçado */
+        .stDataFrame, .stDataFrame *, .stDataFrame table, .stDataFrame table * {
+            color: #000000 !important;
+            background-color: #ffffff !important;
+        }
+        
+        .stDataFrame td, .stDataFrame th {
+            color: #000000 !important;
+            background-color: #ffffff !important;
+            font-size: 14px !important;
+        }
     }
     
     /* FIX GERAL: Garantir que inputs sejam visíveis */
@@ -139,17 +155,36 @@ st.markdown("""
         background-color: white !important;
         color: #333333 !important;
     }
+    
+    /* FIX EXTRA: Sobrescrever qualquer CSS do Streamlit */
+    div[data-testid="stDataFrame"] {
+        color: #000000 !important;
+    }
+    
+    div[data-testid="stDataFrame"] table {
+        color: #000000 !important;
+        background-color: #ffffff !important;
+    }
+    
+    div[data-testid="stDataFrame"] td {
+        color: #000000 !important;
+        background-color: #ffffff !important;
+    }
+    
+    div[data-testid="stDataFrame"] th {
+        color: #000000 !important;
+        background-color: #f8f9fa !important;
+    }
 </style>
 """, unsafe_allow_html=True)
-
 # Dados da empresa
 DADOS_EMPRESA = {
     'nome': 'BRIX LOGÍSTICA',
-    'endereco': 'Rua das Flores, 123 - Centro',
-    'cidade': 'Curitiba - PR',
-    'telefone': '(41) 3333-4444',
-    'email': 'contato@brixlogistica.com.br',
-    'cnpj': '12.345.678/0001-90'
+    'endereco': 'Av Ranieri Mazzilli, nº 755, Centro Civíco',
+    'cidade': 'Foz do Iguaçu - PR',
+    'telefone': '(45) 99115 0734',
+    'email': 'fabio@brixcontabilidade.com.br',
+    'cnpj': '31.247.532/0001-51'
 }
 
 # Colunas do sistema
@@ -590,19 +625,12 @@ def tela_login():
     with col1:
         st.markdown("""
         **📞 Contato:**
-        - Tel: (41) 3333-4444
-        - Email: contato@brixlogistica.com.br
+        - Tel: (45) 99115 0734
+        - Email: fabio@brixcontabilidade.com.br
         - Horário: Seg-Sex 8h-18h
         """)
     
-    with col2:
-        st.markdown("""
-        **🧪 Contas de Teste:**
-        - Admin: `admin` / `admin123`
-        - Cliente ABC: `empresa_abc` / `abc123`
-        - Cliente XYZ: `comercial_xyz` / `xyz123`
-        """)
-        
+            
 def pagina_clientes():
     """Página para gerenciar clientes"""
     st.header("🏢 Gerenciamento de Clientes")
@@ -1039,6 +1067,7 @@ def pagina_usuarios():
 
 def dashboard_principal():
     """Dashboard principal"""
+    aplicar_css_tabela()  # ← ADICIONE ESTA LINHA
     usuario_info = st.session_state.usuario_info
     
     # Cabeçalho
