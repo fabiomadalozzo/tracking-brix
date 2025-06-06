@@ -1288,8 +1288,77 @@ def dashboard_principal():
             elif row['CANAL RFB'] == '':
                 df_display.loc[idx, 'CANAL RFB'] = '⏳ PENDENTE'
         
-        # Mostrar tabela
-        st.dataframe(df_display, use_container_width=True, height=400)
+        # Mostrar tabela com visualização forçada
+        st.markdown("### 📊 Dados dos Trackings:")
+        
+        # Criar tabela manual em HTML para garantir visibilidade
+        html_table = "<div style='overflow-x: auto;'><table style='width: 100%; border-collapse: collapse; font-size: 14px;'>"
+        
+        # Cabeçalho da tabela
+        html_table += """
+        <thead style='background-color: #f0f0f0;'>
+        <tr>
+        """
+        for col in df_display.columns:
+            html_table += f"<th style='border: 1px solid #ddd; padding: 8px; text-align: left; color: #000000; font-weight: bold;'>{col}</th>"
+        html_table += "</tr></thead><tbody>"
+        
+        # Dados da tabela
+        for idx, row in df_display.iterrows():
+            html_table += "<tr>"
+            for col in df_display.columns:
+                valor = str(row[col]) if pd.notna(row[col]) else ""
+                
+                # Cor de fundo baseada no status
+                if col == 'CANAL RFB':
+                    if 'VERDE' in valor:
+                        style = "background-color: #d5f4e6; color: #000000; font-weight: bold;"
+                    elif 'VERMELHO' in valor:
+                        style = "background-color: #fadbd8; color: #000000; font-weight: bold;"
+                    else:
+                        style = "background-color: #fff3cd; color: #000000; font-weight: bold;"
+                else:
+                    style = "color: #000000;"
+                
+                html_table += f"<td style='border: 1px solid #ddd; padding: 8px; {style}'>{valor}</td>"
+            html_table += "</tr>"
+        
+        html_table += "</tbody></table></div>"
+        
+        # Mostrar tabela HTML
+        st.markdown(html_table, unsafe_allow_html=True)
+        
+        # Alternativa: Mostrar como cards para mobile
+        if st.checkbox("📱 Ver como Cards (melhor para mobile)"):
+            for idx, row in df_display.iterrows():
+                # Cor do card baseada no status
+                if 'VERDE' in str(row['CANAL RFB']):
+                    card_color = "#d5f4e6"
+                    border_color = "#27ae60"
+                elif 'VERMELHO' in str(row['CANAL RFB']):
+                    card_color = "#fadbd8"
+                    border_color = "#e74c3c"
+                else:
+                    card_color = "#fff3cd"
+                    border_color = "#ffc107"
+                
+                st.markdown(f"""
+                <div style='
+                    background-color: {card_color}; 
+                    border-left: 4px solid {border_color}; 
+                    padding: 15px; 
+                    margin: 10px 0; 
+                    border-radius: 5px;
+                    color: #000000;
+                '>
+                    <h4 style='color: #000000; margin: 0 0 10px 0;'>📦 {row['CONTAINER']} - {row['CLIENTE']}</h4>
+                    <p style='color: #000000; margin: 5px 0;'><strong>Status:</strong> {row['CANAL RFB']}</p>
+                    <p style='color: #000000; margin: 5px 0;'><strong>Carregamento:</strong> {row['CARREGAMENTO']}</p>
+                    <p style='color: #000000; margin: 5px 0;'><strong>Previsão Paranaguá:</strong> {row['PREVISAO CHEGADA PARANAGUA']}</p>
+                    <p style='color: #000000; margin: 5px 0;'><strong>Chegada Paranaguá:</strong> {row['CHEGADA PARANAGUA']}</p>
+                    <p style='color: #000000; margin: 5px 0;'><strong>Liberação:</strong> {row['LIBERAÇAO PARANAGUA']}</p>
+                </div>
+                """, unsafe_allow_html=True)
         
         # Legenda
         st.info("🟢 Verde = Liberado | 🔴 Vermelho = Inspeção | ⏳ Pendente = Aguardando")
