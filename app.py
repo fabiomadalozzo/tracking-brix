@@ -1067,6 +1067,27 @@ def pagina_usuarios():
 
 def dashboard_principal():
     """Dashboard principal"""
+    # CSS específico para tabela (forçar texto preto)
+    st.markdown("""
+    <style>
+    .stDataFrame table {
+        color: #000000 !important;
+    }
+    .stDataFrame td, .stDataFrame th {
+        color: #000000 !important;
+        background-color: #ffffff !important;
+    }
+    .stDataFrame td[style*="background-color: #d5f4e6"] {
+        color: #000000 !important;
+        background-color: #d5f4e6 !important;
+    }
+    .stDataFrame td[style*="background-color: #fadbd8"] {
+        color: #000000 !important;
+        background-color: #fadbd8 !important;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+    
     usuario_info = st.session_state.usuario_info
     
     # Cabeçalho
