@@ -1354,9 +1354,41 @@ def dashboard_principal():
                 
                 st.markdown("---")
 
-        # OPÇÃO 2: Tabela simples (para quem prefere) - VERSÃO CORRIGIDA
-        if st.checkbox("📊 Ver como Tabela"):
-            st.dataframe(df_display, use_container_width=True, height=400)
+        # OPÇÃO 2: Tabela simples (para quem prefere)
+        if st.checkbox("📊 Ver como Tabela Tradicional"):
+            # Criar tabela com contraste alto
+            html_table = """
+            <div style='overflow-x: auto; background-color: #ffffff; padding: 10px; border-radius: 5px;'>
+            <table style='width: 100%; border-collapse: collapse; font-size: 12px; background-color: #ffffff;'>
+            <thead>
+            <tr style='background-color: #f8f9fa;'>
+            """
+            
+            for col in df_display.columns:
+                html_table += f"<th style='border: 2px solid #000000; padding: 8px; text-align: left; color: #000000; font-weight: bold; background-color: #f8f9fa;'>{col}</th>"
+            
+            html_table += "</tr></thead><tbody>"
+            
+            for idx, row in df_display.iterrows():
+                html_table += "<tr>"
+                for col in df_display.columns:
+                    valor = str(row[col]) if pd.notna(row[col]) else ""
+                    
+                    if col == 'CANAL RFB':
+                        if 'VERDE' in valor:
+                            bg_color = "#d4edda"
+                        elif 'VERMELHO' in valor:
+                            bg_color = "#f8d7da"
+                        else:
+                            bg_color = "#fff3cd"
+                    else:
+                        bg_color = "#ffffff"
+                    
+                    html_table += f"<td style='border: 1px solid #000000; padding: 6px; background-color: {bg_color}; color: #000000; font-weight: 500;'>{valor}</td>"
+                html_table += "</tr>"
+            
+            html_table += "</tbody></table></div>"
+            st.markdown(html_table, unsafe_allow_html=True)
 
         # Legenda
         st.info("🟢 Verde = Liberado | 🔴 Vermelho = Inspeção | ⏳ Pendente = Aguardando")
