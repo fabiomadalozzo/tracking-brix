@@ -25,6 +25,25 @@ st.set_page_config(
 # CSS personalizado + melhorias mobile
 st.markdown("""
 <style>
+    /* FIX: Cor da tabela - texto preto */
+    .stDataFrame {
+        color: #000000 !important;
+    }
+    
+    .stDataFrame table {
+        color: #000000 !important;
+        background-color: #ffffff !important;
+    }
+    
+    .stDataFrame td, .stDataFrame th {
+        color: #000000 !important;
+        background-color: #ffffff !important;
+    }
+    
+    /* Garantir que células com cor de fundo mantenham texto legível */
+    .stDataFrame td[style*="background-color"] {
+        color: #000000 !important;
+    }
     .main-header {
         background: linear-gradient(90deg, #2c3e50 0%, #3498db 100%);
         padding: 2rem;
@@ -353,68 +372,74 @@ def sidebar_backup_system():
         st.write(f"👥 Usuários: {len(st.session_state.usuarios_db)}")
         st.write(f"📦 Trackings: {len(st.session_state.df_tracking)}")
         
-        # Sistema automático com Dropbox
+        # Sistema automático com Dropbox (APENAS ADMIN)
         sistema_backup_automatico()
         
-        # Backup manual simplificado para mobile
-        st.markdown("---")
-        st.subheader("📱 Backup Manual")
-        
-        # Download sempre disponível
-        if st.button("📤 Gerar Backup", help="Cria arquivo para download"):
-            backup_json = criar_backup_manual()
-            nome_arquivo = f"backup_brix_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+        # Backup manual simplificado (APENAS ADMIN)
+        if st.session_state.usuario_info and st.session_state.usuario_info.get("tipo") == "admin":
+            st.markdown("---")
+            st.subheader("📱 Backup Manual")
             
-            st.download_button(
-                label="⬇️ Baixar JSON",
-                data=backup_json,
-                file_name=nome_arquivo,
-                mime="application/json",
-                key="download_backup"
-            )
-            st.success("✅ Backup criado!")
-        
-        # Restaurar por texto (alternativa mobile)
-        with st.expander("📥 Restaurar por Texto"):
-            st.info("💡 **Para mobile:** Cole o conteúdo do arquivo JSON aqui")
+            # Download sempre disponível
+            if st.button("📤 Gerar Backup", help="Cria arquivo para download"):
+                backup_json = criar_backup_manual()
+                nome_arquivo = f"backup_brix_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+                
+                st.download_button(
+                    label="⬇️ Baixar JSON",
+                    data=backup_json,
+                    file_name=nome_arquivo,
+                    mime="application/json",
+                    key="download_backup"
+                )
+                st.success("✅ Backup criado!")
             
-            json_text = st.text_area(
-                "Cole o JSON do backup:",
-                height=100,
-                placeholder='{"clientes": {...}, "usuarios": {...}, "trackings": [...]}'
-            )
-            
-            if st.button("🔄 Restaurar Dados", type="secondary"):
-                if json_text.strip():
-                    try:
-                        backup_data = json.loads(json_text)
-                        
-                        # Validar estrutura
-                        if not all(key in backup_data for key in ['clientes', 'usuarios', 'trackings']):
-                            st.error("❌ JSON inválido! Verifique a estrutura.")
-                        else:
-                            # Restaurar dados
-                            st.session_state.clientes_db = backup_data['clientes']
-                            st.session_state.usuarios_db = backup_data['usuarios']
-                            st.session_state.df_tracking = pd.DataFrame(backup_data['trackings'])
-                            st.session_state.dados_restaurados = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+            # Restaurar por texto (alternativa mobile)
+            with st.expander("📥 Restaurar por Texto"):
+                st.info("💡 **Para mobile:** Cole o conteúdo do arquivo JSON aqui")
+                
+                json_text = st.text_area(
+                    "Cole o JSON do backup:",
+                    height=100,
+                    placeholder='{"clientes": {...}, "usuarios": {...}, "trackings": [...]}'
+                )
+                
+                if st.button("🔄 Restaurar Dados", type="secondary"):
+                    if json_text.strip():
+                        try:
+                            backup_data = json.loads(json_text)
                             
-                            st.success("✅ Dados restaurados com sucesso!")
-                            st.rerun()
-                            
-                    except json.JSONDecodeError:
-                        st.error("❌ JSON inválido! Verifique a formatação.")
-                    except Exception as e:
-                        st.error(f"❌ Erro: {str(e)}")
-                else:
-                    st.warning("⚠️ Cole o conteúdo JSON primeiro!")
-        
-        # Status da última operação
-        if 'dados_restaurados' in st.session_state:
-            st.success(f"🕐 Última operação: {st.session_state.dados_restaurados}")
+                            # Validar estrutura
+                            if not all(key in backup_data for key in ['clientes', 'usuarios', 'trackings']):
+                                st.error("❌ JSON inválido! Verifique a estrutura.")
+                            else:
+                                # Restaurar dados
+                                st.session_state.clientes_db = backup_data['clientes']
+                                st.session_state.usuarios_db = backup_data['usuarios']
+                                st.session_state.df_tracking = pd.DataFrame(backup_data['trackings'])
+                                st.session_state.dados_restaurados = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+                                
+                                st.success("✅ Dados restaurados com sucesso!")
+                                st.rerun()
+                                
+                        except json.JSONDecodeError:
+                            st.error("❌ JSON inválido! Verifique a formatação.")
+                        except Exception as e:
+                            st.error(f"❌ Erro: {str(e)}")
+                    else:
+                        st.warning("⚠️ Cole o conteúdo JSON primeiro!")
+            
+            # Status da última operação
+            if 'dados_restaurados' in st.session_state:
+                st.success(f"🕐 Última operação: {st.session_state.dados_restaurados}")
             
 def sistema_backup_automatico():
-    """Sistema de backup automático com Dropbox integrado"""
+    """Sistema de backup automático com Dropbox integrado - APENAS PARA ADMIN"""
+    
+    # Verificar se é admin
+    if not st.session_state.usuario_info or st.session_state.usuario_info.get("tipo") != "admin":
+        return  # Não mostra nada para clientes
+    
     with st.sidebar:
         st.markdown("---")
         st.subheader("☁️ Sincronização Dropbox")
