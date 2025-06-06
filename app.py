@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Sistema de Tracking BRIX - Versão com Gerenciamento de Usuários
-Permite cadastrar/editar/excluir usuários diretamente pelo sistema
+Sistema de Tracking BRIX - Versão Completa
+Com Cadastro de Clientes, Usuários e Persistência de Dados
 Escritório de contabilidade - Brasil
 """
 
@@ -17,7 +17,7 @@ import json
 
 # Configuração da página
 st.set_page_config(
-    page_title="🚢 Sistema BRIX - Tracking com Usuários",
+    page_title="🚢 Sistema BRIX - Completo",
     page_icon="🚢",
     layout="wide",
     initial_sidebar_state="expanded"
@@ -61,7 +61,7 @@ st.markdown("""
         display: inline-block;
         margin: 1rem 0;
     }
-    .user-card {
+    .card {
         background: white;
         padding: 1rem;
         border-radius: 8px;
@@ -69,11 +69,11 @@ st.markdown("""
         border-left: 4px solid #3498db;
         margin: 1rem 0;
     }
-    .admin-user {
-        border-left-color: #e74c3c !important;
-    }
-    .cliente-user {
+    .cliente-card {
         border-left-color: #27ae60 !important;
+    }
+    .usuario-card {
+        border-left-color: #e74c3c !important;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -81,11 +81,11 @@ st.markdown("""
 # Dados da empresa
 DADOS_EMPRESA = {
     'nome': 'BRIX LOGÍSTICA',
-    'endereco': 'Av Ranieri Mazzilli, 755',
-    'cidade': 'Foz do Iguaçu - PR',
-    'telefone': '(45) 3198-4037',
-    'email': 'fabio@brixcontabilidade.com.br',
-    'cnpj': '31.247.532/0001-51'
+    'endereco': 'Rua das Flores, 123 - Centro',
+    'cidade': 'Curitiba - PR',
+    'telefone': '(41) 3333-4444',
+    'email': 'contato@brixlogistica.com.br',
+    'cnpj': '12.345.678/0001-90'
 }
 
 # Colunas do sistema
@@ -96,14 +96,43 @@ COLUNAS = [
     'DESCARREGAMENTO'
 ]
 
-def inicializar_usuarios():
-    """Inicializa a base de usuários se não existir"""
+def inicializar_dados():
+    """Inicializa todas as estruturas de dados"""
+    
+    # Clientes
+    if 'clientes_db' not in st.session_state:
+        st.session_state.clientes_db = {
+            "EMPRESA ABC LTDA": {
+                "razao_social": "EMPRESA ABC LTDA",
+                "nome_fantasia": "ABC Importadora",
+                "cnpj": "12.345.678/0001-01",
+                "email": "contato@empresaabc.com.br",
+                "telefone": "(11) 1111-1111",
+                "endereco": "Rua A, 123 - São Paulo/SP",
+                "contato": "João Silva",
+                "ativo": True,
+                "data_cadastro": "01/06/2025"
+            },
+            "COMERCIAL XYZ S.A.": {
+                "razao_social": "COMERCIAL XYZ S.A.",
+                "nome_fantasia": "XYZ Trading",
+                "cnpj": "98.765.432/0001-02",
+                "email": "gerencia@comercialxyz.com.br",
+                "telefone": "(21) 2222-2222",
+                "endereco": "Av. B, 456 - Rio de Janeiro/RJ",
+                "contato": "Maria Santos",
+                "ativo": True,
+                "data_cadastro": "01/06/2025"
+            }
+        }
+    
+    # Usuários
     if 'usuarios_db' not in st.session_state:
         st.session_state.usuarios_db = {
             "admin": {
                 "senha": "admin123",
                 "tipo": "admin",
-                "cliente": None,
+                "cliente_vinculado": None,
                 "nome": "Administrador BRIX",
                 "email": "admin@brixlogistica.com.br",
                 "ativo": True,
@@ -112,8 +141,8 @@ def inicializar_usuarios():
             "empresa_abc": {
                 "senha": "abc123",
                 "tipo": "cliente",
-                "cliente": "EMPRESA ABC LTDA",
-                "nome": "Empresa ABC Ltda",
+                "cliente_vinculado": "EMPRESA ABC LTDA",
+                "nome": "Empresa ABC",
                 "email": "contato@empresaabc.com.br",
                 "ativo": True,
                 "data_criacao": "01/06/2025"
@@ -121,61 +150,34 @@ def inicializar_usuarios():
             "comercial_xyz": {
                 "senha": "xyz123",
                 "tipo": "cliente", 
-                "cliente": "COMERCIAL XYZ S.A.",
-                "nome": "Comercial XYZ S.A.",
+                "cliente_vinculado": "COMERCIAL XYZ S.A.",
+                "nome": "Comercial XYZ",
                 "email": "gerencia@comercialxyz.com.br",
                 "ativo": True,
                 "data_criacao": "01/06/2025"
             }
         }
-
-def salvar_usuarios():
-    """Simula salvamento dos usuários (em produção seria banco de dados)"""
-    # Em produção, aqui você salvaria no banco de dados
-    pass
-
-def gerar_usuario_automatico(nome_cliente):
-    """Gera usuário automático baseado no nome do cliente"""
-    # Remove acentos e caracteres especiais, transforma em minúscula
-    import unicodedata
-    nome_limpo = unicodedata.normalize('NFD', nome_cliente)
-    nome_limpo = ''.join(char for char in nome_limpo if unicodedata.category(char) != 'Mn')
-    nome_limpo = nome_limpo.replace(' ', '_').replace('.', '').replace(',', '').lower()
     
-    # Pega as primeiras palavras significativas
-    palavras = [p for p in nome_limpo.split('_') if len(p) > 2 and p not in ['ltda', 'sa', 'epp', 'me']]
-    usuario = '_'.join(palavras[:2]) if len(palavras) >= 2 else palavras[0] if palavras else nome_limpo
+    # Trackings
+    if 'df_tracking' not in st.session_state:
+        st.session_state.df_tracking = pd.DataFrame(columns=COLUNAS)
     
-    return usuario[:20]  # Limita o tamanho
-
-def gerar_senha_temporaria():
-    """Gera senha temporária simples"""
-    import random
-    import string
-    return ''.join(random.choices(string.ascii_lowercase + string.digits, k=8))
-
-def verificar_login(usuario, senha):
-    """Verifica credenciais do usuário"""
-    inicializar_usuarios()
-    if usuario in st.session_state.usuarios_db:
-        user_data = st.session_state.usuarios_db[usuario]
-        if user_data["senha"] == senha and user_data["ativo"]:
-            return user_data
-    return None
-
-def inicializar_sessao():
-    """Inicializa variáveis da sessão"""
+    # Outras variáveis de sessão
     if 'logado' not in st.session_state:
         st.session_state.logado = False
     if 'usuario_info' not in st.session_state:
         st.session_state.usuario_info = None
-    if 'df_tracking' not in st.session_state:
-        st.session_state.df_tracking = pd.DataFrame(columns=COLUNAS)
-    inicializar_usuarios()
+    if 'pagina_atual' not in st.session_state:
+        st.session_state.pagina_atual = "dashboard"
+
+def salvar_dados():
+    """Simula salvamento dos dados (em produção seria banco de dados)"""
+    # Em produção, aqui você salvaria no banco de dados
+    pass
 
 def criar_dados_exemplo():
-    """Cria dados de exemplo com múltiplos clientes"""
-    dados_exemplo = [
+    """Cria dados de exemplo completos"""
+    dados_tracking = [
         {
             'CLIENTE': 'EMPRESA ABC LTDA',
             'CONTAINER': 'TCLU1234567',
@@ -188,6 +190,19 @@ def criar_dados_exemplo():
             'LIBERAÇAO PARANAGUA': '24/05/2025',
             'CHEGADA CIUDAD DEL ESTE PY': '26/05/2025',
             'DESCARREGAMENTO': '28/05/2025'
+        },
+        {
+            'CLIENTE': 'EMPRESA ABC LTDA',
+            'CONTAINER': 'ABCU7777777',
+            'CARREGAMENTO': '22/05/2025',
+            'EMBARQUE NAVIO': '25/05/2025',
+            'SAIDA NAVIO': '27/05/2025',
+            'PREVISAO CHEGADA PARANAGUA': '02/06/2025',
+            'CHEGADA PARANAGUA': '',
+            'CANAL RFB': '',
+            'LIBERAÇAO PARANAGUA': '',
+            'CHEGADA CIUDAD DEL ESTE PY': '',
+            'DESCARREGAMENTO': ''
         },
         {
             'CLIENTE': 'COMERCIAL XYZ S.A.',
@@ -203,14 +218,40 @@ def criar_dados_exemplo():
             'DESCARREGAMENTO': ''
         }
     ]
-    return pd.DataFrame(dados_exemplo)
+    return pd.DataFrame(dados_tracking)
+
+def gerar_usuario_automatico(razao_social):
+    """Gera usuário automático baseado na razão social"""
+    import unicodedata
+    nome_limpo = unicodedata.normalize('NFD', razao_social)
+    nome_limpo = ''.join(char for char in nome_limpo if unicodedata.category(char) != 'Mn')
+    nome_limpo = nome_limpo.replace(' ', '_').replace('.', '').replace(',', '').lower()
+    
+    palavras = [p for p in nome_limpo.split('_') if len(p) > 2 and p not in ['ltda', 'sa', 'epp', 'me']]
+    usuario = '_'.join(palavras[:2]) if len(palavras) >= 2 else palavras[0] if palavras else nome_limpo
+    
+    return usuario[:20]
+
+def gerar_senha_temporaria():
+    """Gera senha temporária"""
+    import random
+    import string
+    return ''.join(random.choices(string.ascii_lowercase + string.digits, k=8))
+
+def verificar_login(usuario, senha):
+    """Verifica credenciais do usuário"""
+    if usuario in st.session_state.usuarios_db:
+        user_data = st.session_state.usuarios_db[usuario]
+        if user_data["senha"] == senha and user_data["ativo"]:
+            return user_data
+    return None
 
 def filtrar_dados_por_cliente(df, usuario_info):
     """Filtra dados baseado no tipo de usuário"""
     if usuario_info["tipo"] == "admin":
         return df
     else:
-        return df[df['CLIENTE'] == usuario_info["cliente"]]
+        return df[df['CLIENTE'] == usuario_info["cliente_vinculado"]]
 
 def colorir_linha(row):
     """Aplica cores baseado no canal RFB"""
@@ -221,52 +262,290 @@ def colorir_linha(row):
     else:
         return [''] * len(row)
 
-def pagina_gerenciar_usuarios():
-    """Página para gerenciar usuários (só admin)"""
+def pagina_clientes():
+    """Página para gerenciar clientes"""
+    st.header("🏢 Gerenciamento de Clientes")
+    
+    tab1, tab2, tab3 = st.tabs(["📋 Lista de Clientes", "➕ Novo Cliente", "📊 Estatísticas"])
+    
+    with tab1:
+        st.subheader("🏢 Clientes Cadastrados")
+        
+        if not st.session_state.clientes_db:
+            st.info("📋 Nenhum cliente cadastrado ainda.")
+        else:
+            for razao_social, dados in st.session_state.clientes_db.items():
+                status_emoji = "✅" if dados["ativo"] else "❌"
+                
+                col1, col2, col3, col4 = st.columns([4, 1, 1, 1])
+                
+                with col1:
+                    st.markdown(f"""
+                    <div class="card cliente-card">
+                        <h4>🏢 {dados['nome_fantasia']} {status_emoji}</h4>
+                        <p><strong>Razão Social:</strong> {dados['razao_social']}</p>
+                        <p><strong>CNPJ:</strong> {dados['cnpj']}</p>
+                        <p><strong>Email:</strong> {dados['email']}</p>
+                        <p><strong>Telefone:</strong> {dados['telefone']}</p>
+                        <p><strong>Contato:</strong> {dados['contato']}</p>
+                        <p><strong>Cadastrado:</strong> {dados['data_cadastro']}</p>
+                    </div>
+                    """, unsafe_allow_html=True)
+                
+                with col2:
+                    if st.button(f"✏️ Editar", key=f"edit_cliente_{razao_social}"):
+                        st.session_state.editando_cliente = razao_social
+                        st.rerun()
+                
+                with col3:
+                    status_btn = "🔓 Ativar" if not dados["ativo"] else "🔒 Desativar"
+                    if st.button(status_btn, key=f"toggle_cliente_{razao_social}"):
+                        st.session_state.clientes_db[razao_social]["ativo"] = not dados["ativo"]
+                        salvar_dados()
+                        st.success(f"✅ Cliente {razao_social} {'ativado' if dados['ativo'] else 'desativado'}!")
+                        st.rerun()
+                
+                with col4:
+                    if st.button(f"🗑️ Excluir", key=f"del_cliente_{razao_social}"):
+                        st.session_state.excluindo_cliente = razao_social
+        
+        # Modal de confirmação para exclusão
+        if 'excluindo_cliente' in st.session_state:
+            st.error(f"⚠️ Tem certeza que deseja excluir o cliente '{st.session_state.excluindo_cliente}'?")
+            st.warning("🚨 Isso também excluirá todos os trackings e usuários vinculados!")
+            col1, col2 = st.columns(2)
+            with col1:
+                if st.button("✅ Sim, excluir"):
+                    razao_social = st.session_state.excluindo_cliente
+                    
+                    # Excluir cliente
+                    del st.session_state.clientes_db[razao_social]
+                    
+                    # Excluir trackings do cliente
+                    st.session_state.df_tracking = st.session_state.df_tracking[
+                        st.session_state.df_tracking['CLIENTE'] != razao_social
+                    ].reset_index(drop=True)
+                    
+                    # Excluir usuários vinculados
+                    usuarios_para_excluir = [
+                        user_id for user_id, user_data in st.session_state.usuarios_db.items()
+                        if user_data.get('cliente_vinculado') == razao_social
+                    ]
+                    for user_id in usuarios_para_excluir:
+                        del st.session_state.usuarios_db[user_id]
+                    
+                    del st.session_state.excluindo_cliente
+                    salvar_dados()
+                    st.success("🗑️ Cliente e dados relacionados excluídos!")
+                    st.rerun()
+            with col2:
+                if st.button("❌ Cancelar"):
+                    del st.session_state.excluindo_cliente
+                    st.rerun()
+        
+        # Formulário de edição
+        if 'editando_cliente' in st.session_state:
+            razao_social = st.session_state.editando_cliente
+            dados = st.session_state.clientes_db[razao_social]
+            
+            st.markdown("---")
+            st.subheader(f"✏️ Editando: {dados['nome_fantasia']}")
+            
+            with st.form("editar_cliente"):
+                col1, col2 = st.columns(2)
+                
+                with col1:
+                    nova_razao = st.text_input("Razão Social:", value=dados['razao_social'])
+                    novo_fantasia = st.text_input("Nome Fantasia:", value=dados['nome_fantasia'])
+                    novo_cnpj = st.text_input("CNPJ:", value=dados['cnpj'])
+                    novo_email = st.text_input("Email:", value=dados['email'])
+                
+                with col2:
+                    novo_telefone = st.text_input("Telefone:", value=dados['telefone'])
+                    novo_endereco = st.text_input("Endereço:", value=dados['endereco'])
+                    novo_contato = st.text_input("Contato:", value=dados['contato'])
+                    novo_ativo = st.checkbox("Ativo", value=dados['ativo'])
+                
+                col1, col2 = st.columns(2)
+                with col1:
+                    if st.form_submit_button("💾 Salvar Alterações", type="primary"):
+                        # Se mudou a razão social, precisa atualizar referências
+                        if nova_razao != razao_social:
+                            # Atualizar trackings
+                            st.session_state.df_tracking.loc[
+                                st.session_state.df_tracking['CLIENTE'] == razao_social, 'CLIENTE'
+                            ] = nova_razao
+                            
+                            # Atualizar usuários vinculados
+                            for user_data in st.session_state.usuarios_db.values():
+                                if user_data.get('cliente_vinculado') == razao_social:
+                                    user_data['cliente_vinculado'] = nova_razao
+                            
+                            # Remover cliente antigo e adicionar novo
+                            del st.session_state.clientes_db[razao_social]
+                        
+                        # Atualizar dados do cliente
+                        st.session_state.clientes_db[nova_razao] = {
+                            'razao_social': nova_razao,
+                            'nome_fantasia': novo_fantasia,
+                            'cnpj': novo_cnpj,
+                            'email': novo_email,
+                            'telefone': novo_telefone,
+                            'endereco': novo_endereco,
+                            'contato': novo_contato,
+                            'ativo': novo_ativo,
+                            'data_cadastro': dados['data_cadastro']
+                        }
+                        
+                        salvar_dados()
+                        del st.session_state.editando_cliente
+                        st.success("✅ Cliente atualizado!")
+                        st.rerun()
+                
+                with col2:
+                    if st.form_submit_button("❌ Cancelar"):
+                        del st.session_state.editando_cliente
+                        st.rerun()
+    
+    with tab2:
+        st.subheader("➕ Cadastrar Novo Cliente")
+        
+        with st.form("novo_cliente"):
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                razao_social = st.text_input("Razão Social *:", placeholder="ex: NOVA EMPRESA LTDA")
+                nome_fantasia = st.text_input("Nome Fantasia *:", placeholder="ex: Nova Empresa")
+                cnpj = st.text_input("CNPJ:", placeholder="ex: 12.345.678/0001-90")
+                email = st.text_input("Email *:", placeholder="contato@novaempresa.com.br")
+            
+            with col2:
+                telefone = st.text_input("Telefone:", placeholder="(11) 1234-5678")
+                endereco = st.text_input("Endereço:", placeholder="Rua A, 123 - Cidade/UF")
+                contato = st.text_input("Pessoa de Contato:", placeholder="João Silva")
+                criar_usuario = st.checkbox("🤖 Criar usuário automaticamente")
+            
+            if st.form_submit_button("🏢 Cadastrar Cliente", type="primary"):
+                # Validações
+                erros = []
+                if not razao_social:
+                    erros.append("❌ Razão Social é obrigatória")
+                if not nome_fantasia:
+                    erros.append("❌ Nome Fantasia é obrigatório")
+                if not email:
+                    erros.append("❌ Email é obrigatório")
+                if razao_social in st.session_state.clientes_db:
+                    erros.append("❌ Cliente já cadastrado")
+                
+                if erros:
+                    for erro in erros:
+                        st.error(erro)
+                else:
+                    # Cadastrar cliente
+                    st.session_state.clientes_db[razao_social] = {
+                        'razao_social': razao_social,
+                        'nome_fantasia': nome_fantasia,
+                        'cnpj': cnpj,
+                        'email': email,
+                        'telefone': telefone,
+                        'endereco': endereco,
+                        'contato': contato,
+                        'ativo': True,
+                        'data_cadastro': datetime.now().strftime("%d/%m/%Y")
+                    }
+                    
+                    mensagem_sucesso = f"✅ Cliente '{nome_fantasia}' cadastrado com sucesso!"
+                    
+                    # Criar usuário se solicitado
+                    if criar_usuario:
+                        usuario_auto = gerar_usuario_automatico(razao_social)
+                        senha_auto = gerar_senha_temporaria()
+                        
+                        if usuario_auto not in st.session_state.usuarios_db:
+                            st.session_state.usuarios_db[usuario_auto] = {
+                                "senha": senha_auto,
+                                "tipo": "cliente",
+                                "cliente_vinculado": razao_social,
+                                "nome": nome_fantasia,
+                                "email": email,
+                                "ativo": True,
+                                "data_criacao": datetime.now().strftime("%d/%m/%Y")
+                            }
+                            
+                            mensagem_sucesso += f"\n\n🤖 **Usuário criado automaticamente:**\n- **Usuário:** {usuario_auto}\n- **Senha:** {senha_auto}"
+                    
+                    salvar_dados()
+                    st.success(mensagem_sucesso)
+    
+    with tab3:
+        st.subheader("📊 Estatísticas de Clientes")
+        
+        total_clientes = len(st.session_state.clientes_db)
+        clientes_ativos = sum(1 for c in st.session_state.clientes_db.values() if c["ativo"])
+        
+        col1, col2, col3, col4 = st.columns(4)
+        
+        with col1:
+            st.metric("🏢 Total", total_clientes)
+        with col2:
+            st.metric("✅ Ativos", clientes_ativos)
+        with col3:
+            # Contar trackings por cliente
+            if not st.session_state.df_tracking.empty:
+                clientes_com_tracking = st.session_state.df_tracking['CLIENTE'].nunique()
+                st.metric("📦 Com Trackings", clientes_com_tracking)
+            else:
+                st.metric("📦 Com Trackings", 0)
+        with col4:
+            # Contar usuários vinculados
+            usuarios_vinculados = sum(1 for u in st.session_state.usuarios_db.values() if u.get("cliente_vinculado"))
+            st.metric("👤 Com Usuários", usuarios_vinculados)
+
+def pagina_usuarios():
+    """Página para gerenciar usuários"""
     st.header("👥 Gerenciamento de Usuários")
     
-    # Tabs para organizar
     tab1, tab2, tab3 = st.tabs(["📋 Lista de Usuários", "➕ Novo Usuário", "📊 Estatísticas"])
     
     with tab1:
         st.subheader("👤 Usuários Cadastrados")
         
-        # Mostrar usuários em cards
         for usuario_id, dados in st.session_state.usuarios_db.items():
-            card_class = "admin-user" if dados["tipo"] == "admin" else "cliente-user"
+            card_class = "usuario-card" if dados["tipo"] == "admin" else "card"
             status_emoji = "✅" if dados["ativo"] else "❌"
             tipo_emoji = "👑" if dados["tipo"] == "admin" else "👤"
             
             col1, col2, col3, col4 = st.columns([3, 1, 1, 1])
             
             with col1:
+                cliente_info = f"<p><strong>Cliente:</strong> {dados['cliente_vinculado']}</p>" if dados['cliente_vinculado'] else ""
                 st.markdown(f"""
-                <div class="user-card {card_class}">
+                <div class="{card_class}">
                     <h4>{tipo_emoji} {dados['nome']} {status_emoji}</h4>
                     <p><strong>Usuário:</strong> {usuario_id}</p>
                     <p><strong>Email:</strong> {dados['email']}</p>
                     <p><strong>Tipo:</strong> {dados['tipo'].title()}</p>
-                    {f"<p><strong>Cliente:</strong> {dados['cliente']}</p>" if dados['cliente'] else ""}
+                    {cliente_info}
                     <p><strong>Criado:</strong> {dados['data_criacao']}</p>
                 </div>
                 """, unsafe_allow_html=True)
             
             with col2:
-                if st.button(f"✏️ Editar", key=f"edit_{usuario_id}"):
+                if st.button(f"✏️ Editar", key=f"edit_user_{usuario_id}"):
                     st.session_state.editando_usuario = usuario_id
                     st.rerun()
             
             with col3:
                 status_btn = "🔓 Ativar" if not dados["ativo"] else "🔒 Desativar"
-                if st.button(status_btn, key=f"toggle_{usuario_id}"):
+                if st.button(status_btn, key=f"toggle_user_{usuario_id}"):
                     st.session_state.usuarios_db[usuario_id]["ativo"] = not dados["ativo"]
-                    salvar_usuarios()
+                    salvar_dados()
                     st.success(f"✅ Usuário {usuario_id} {'ativado' if dados['ativo'] else 'desativado'}!")
                     st.rerun()
             
             with col4:
-                if usuario_id != "admin":  # Não pode excluir admin
-                    if st.button(f"🗑️ Excluir", key=f"del_{usuario_id}"):
+                if usuario_id != "admin":
+                    if st.button(f"🗑️ Excluir", key=f"del_user_{usuario_id}"):
                         st.session_state.excluindo_usuario = usuario_id
         
         # Modal de confirmação para exclusão
@@ -277,7 +556,7 @@ def pagina_gerenciar_usuarios():
                 if st.button("✅ Sim, excluir"):
                     del st.session_state.usuarios_db[st.session_state.excluindo_usuario]
                     del st.session_state.excluindo_usuario
-                    salvar_usuarios()
+                    salvar_dados()
                     st.success("🗑️ Usuário excluído!")
                     st.rerun()
             with col2:
@@ -303,9 +582,8 @@ def pagina_gerenciar_usuarios():
                 
                 with col2:
                     if dados['tipo'] == 'cliente':
-                        # Buscar clientes únicos dos dados
-                        clientes_disponiveis = [""] + list(st.session_state.df_tracking['CLIENTE'].unique()) if not st.session_state.df_tracking.empty else [""]
-                        cliente_atual_idx = clientes_disponiveis.index(dados['cliente']) if dados['cliente'] in clientes_disponiveis else 0
+                        clientes_disponiveis = [""] + list(st.session_state.clientes_db.keys())
+                        cliente_atual_idx = clientes_disponiveis.index(dados['cliente_vinculado']) if dados['cliente_vinculado'] in clientes_disponiveis else 0
                         novo_cliente = st.selectbox("Cliente:", clientes_disponiveis, index=cliente_atual_idx)
                     else:
                         novo_cliente = None
@@ -316,18 +594,17 @@ def pagina_gerenciar_usuarios():
                 col1, col2 = st.columns(2)
                 with col1:
                     if st.form_submit_button("💾 Salvar Alterações", type="primary"):
-                        # Atualizar dados
                         st.session_state.usuarios_db[usuario_id].update({
                             'nome': novo_nome,
                             'email': novo_email,
-                            'cliente': novo_cliente,
+                            'cliente_vinculado': novo_cliente,
                             'ativo': novo_ativo
                         })
                         
                         if nova_senha:
                             st.session_state.usuarios_db[usuario_id]['senha'] = nova_senha
                         
-                        salvar_usuarios()
+                        salvar_dados()
                         del st.session_state.editando_usuario
                         st.success("✅ Usuário atualizado!")
                         st.rerun()
@@ -340,127 +617,79 @@ def pagina_gerenciar_usuarios():
     with tab2:
         st.subheader("➕ Cadastrar Novo Usuário")
         
-        # Método de criação
-        metodo = st.radio("Escolha o método:", ["📝 Manual", "🤖 Automático (baseado em cliente)"])
-        
-        if metodo == "📝 Manual":
-            with st.form("novo_usuario_manual"):
-                col1, col2 = st.columns(2)
-                
-                with col1:
-                    novo_usuario = st.text_input("Nome de Usuário:", placeholder="ex: empresa_nova")
-                    novo_nome = st.text_input("Nome Completo:", placeholder="ex: Empresa Nova Ltda")
-                    novo_email = st.text_input("Email:", placeholder="contato@empresa.com.br")
-                
-                with col2:
-                    nova_senha = st.text_input("Senha:", type="password", placeholder="Senha temporária")
-                    tipo_usuario = st.selectbox("Tipo:", ["cliente", "admin"])
-                    
-                    if tipo_usuario == "cliente":
-                        # Buscar clientes únicos dos dados
-                        clientes_disponiveis = list(st.session_state.df_tracking['CLIENTE'].unique()) if not st.session_state.df_tracking.empty else []
-                        if clientes_disponiveis:
-                            cliente_vinculado = st.selectbox("Cliente:", [""] + clientes_disponiveis)
-                        else:
-                            cliente_vinculado = st.text_input("Nome do Cliente:", placeholder="Digite o nome exato do cliente")
-                    else:
-                        cliente_vinculado = None
-                        st.info("👑 Admin tem acesso a todos os dados")
-                
-                if st.form_submit_button("👤 Criar Usuário", type="primary"):
-                    # Validações
-                    erros = []
-                    if not novo_usuario or novo_usuario in st.session_state.usuarios_db:
-                        erros.append("❌ Nome de usuário inválido ou já existe")
-                    if not novo_nome:
-                        erros.append("❌ Nome completo é obrigatório")
-                    if not nova_senha:
-                        erros.append("❌ Senha é obrigatória")
-                    if tipo_usuario == "cliente" and not cliente_vinculado:
-                        erros.append("❌ Cliente é obrigatório para usuários tipo cliente")
-                    
-                    if erros:
-                        for erro in erros:
-                            st.error(erro)
-                    else:
-                        # Criar usuário
-                        st.session_state.usuarios_db[novo_usuario] = {
-                            "senha": nova_senha,
-                            "tipo": tipo_usuario,
-                            "cliente": cliente_vinculado if tipo_usuario == "cliente" else None,
-                            "nome": novo_nome,
-                            "email": novo_email,
-                            "ativo": True,
-                            "data_criacao": datetime.now().strftime("%d/%m/%Y")
-                        }
-                        
-                        salvar_usuarios()
-                        st.success(f"✅ Usuário '{novo_usuario}' criado com sucesso!")
-                        
-                        # Mostrar dados de acesso
-                        st.info(f"""
-                        🔐 **Dados de Acesso Criados:**
-                        - **Usuário:** {novo_usuario}
-                        - **Senha:** {nova_senha}
-                        - **Tipo:** {tipo_usuario.title()}
-                        {f"- **Cliente:** {cliente_vinculado}" if cliente_vinculado else ""}
-                        
-                        📧 Envie essas informações para o cliente por email seguro!
-                        """)
-        
-        else:  # Automático
-            st.info("🤖 Este método cria usuários automaticamente baseado nos clientes existentes nos dados")
+        with st.form("novo_usuario"):
+            col1, col2 = st.columns(2)
             
-            if st.session_state.df_tracking.empty:
-                st.warning("⚠️ Carregue dados primeiro para usar este método")
-            else:
-                clientes_sem_usuario = []
-                clientes_existentes = [dados['cliente'] for dados in st.session_state.usuarios_db.values() if dados['cliente']]
+            with col1:
+                novo_usuario = st.text_input("Nome de Usuário *:", placeholder="ex: novo_usuario")
+                novo_nome = st.text_input("Nome Completo *:", placeholder="ex: João Silva")
+                novo_email = st.text_input("Email *:", placeholder="joao@empresa.com")
+                nova_senha = st.text_input("Senha *:", type="password", placeholder="Senha temporária")
+            
+            with col2:
+                tipo_usuario = st.selectbox("Tipo *:", ["cliente", "admin"])
                 
-                for cliente in st.session_state.df_tracking['CLIENTE'].unique():
-                    if cliente not in clientes_existentes:
-                        clientes_sem_usuario.append(cliente)
-                
-                if not clientes_sem_usuario:
-                    st.success("✅ Todos os clientes já possuem usuários!")
+                if tipo_usuario == "cliente":
+                    clientes_disponiveis = list(st.session_state.clientes_db.keys())
+                    if clientes_disponiveis:
+                        cliente_vinculado = st.selectbox("Cliente *:", [""] + clientes_disponiveis)
+                    else:
+                        st.warning("⚠️ Cadastre clientes primeiro!")
+                        cliente_vinculado = ""
                 else:
-                    st.write("📋 Clientes sem usuário:")
-                    for cliente in clientes_sem_usuario:
-                        col1, col2, col3 = st.columns([3, 1, 1])
-                        
-                        with col1:
-                            st.write(f"🏢 {cliente}")
-                        
-                        with col2:
-                            usuario_sugerido = gerar_usuario_automatico(cliente)
-                            st.code(usuario_sugerido)
-                        
-                        with col3:
-                            if st.button(f"➕ Criar", key=f"auto_{cliente}"):
-                                senha_temp = gerar_senha_temporaria()
-                                
-                                st.session_state.usuarios_db[usuario_sugerido] = {
-                                    "senha": senha_temp,
-                                    "tipo": "cliente",
-                                    "cliente": cliente,
-                                    "nome": cliente,
-                                    "email": f"contato@{usuario_sugerido.replace('_', '')}.com.br",
-                                    "ativo": True,
-                                    "data_criacao": datetime.now().strftime("%d/%m/%Y")
-                                }
-                                
-                                salvar_usuarios()
-                                st.success(f"✅ Usuário criado: {usuario_sugerido} / {senha_temp}")
-                                st.rerun()
+                    cliente_vinculado = None
+                    st.info("👑 Admin tem acesso a todos os dados")
+            
+            if st.form_submit_button("👤 Criar Usuário", type="primary"):
+                # Validações
+                erros = []
+                if not novo_usuario or novo_usuario in st.session_state.usuarios_db:
+                    erros.append("❌ Nome de usuário inválido ou já existe")
+                if not novo_nome:
+                    erros.append("❌ Nome completo é obrigatório")
+                if not nova_senha:
+                    erros.append("❌ Senha é obrigatória")
+                if not novo_email:
+                    erros.append("❌ Email é obrigatório")
+                if tipo_usuario == "cliente" and not cliente_vinculado:
+                    erros.append("❌ Cliente é obrigatório para usuários tipo cliente")
+                
+                if erros:
+                    for erro in erros:
+                        st.error(erro)
+                else:
+                    # Criar usuário
+                    st.session_state.usuarios_db[novo_usuario] = {
+                        "senha": nova_senha,
+                        "tipo": tipo_usuario,
+                        "cliente_vinculado": cliente_vinculado if tipo_usuario == "cliente" else None,
+                        "nome": novo_nome,
+                        "email": novo_email,
+                        "ativo": True,
+                        "data_criacao": datetime.now().strftime("%d/%m/%Y")
+                    }
+                    
+                    salvar_dados()
+                    st.success(f"✅ Usuário '{novo_usuario}' criado com sucesso!")
+                    
+                    # Mostrar dados de acesso
+                    st.info(f"""
+                    🔐 **Dados de Acesso Criados:**
+                    - **Usuário:** {novo_usuario}
+                    - **Senha:** {nova_senha}
+                    - **Tipo:** {tipo_usuario.title()}
+                    {f"- **Cliente:** {cliente_vinculado}" if cliente_vinculado else ""}
+                    
+                    📧 Envie essas informações para o usuário por email seguro!
+                    """)
     
     with tab3:
         st.subheader("📊 Estatísticas de Usuários")
         
-        # Métricas
         total_usuarios = len(st.session_state.usuarios_db)
         usuarios_ativos = sum(1 for u in st.session_state.usuarios_db.values() if u["ativo"])
         admins = sum(1 for u in st.session_state.usuarios_db.values() if u["tipo"] == "admin")
-        clientes = sum(1 for u in st.session_state.usuarios_db.values() if u["tipo"] == "cliente")
+        clientes_usuarios = sum(1 for u in st.session_state.usuarios_db.values() if u["tipo"] == "cliente")
         
         col1, col2, col3, col4 = st.columns(4)
         
@@ -471,22 +700,15 @@ def pagina_gerenciar_usuarios():
         with col3:
             st.metric("👑 Admins", admins)
         with col4:
-            st.metric("👤 Clientes", clientes)
-        
-        # Gráfico de tipos de usuário
-        if total_usuarios > 0:
-            tipos_count = {"Admin": admins, "Cliente": clientes}
-            fig = px.pie(values=list(tipos_count.values()), names=list(tipos_count.keys()), 
-                        title="📊 Distribuição por Tipo de Usuário")
-            st.plotly_chart(fig, use_container_width=True)
+            st.metric("👤 Clientes", clientes_usuarios)
 
 def tela_login():
     """Exibe tela de login"""
     st.markdown("""
     <div class="main-header">
         <h1>🚢 BRIX LOGÍSTICA</h1>
-        <h3>Sistema de Tracking Seguro</h3>
-        <p>Acesso Restrito - Login Necessário</p>
+        <h3>Sistema de Tracking Completo</h3>
+        <p>Acesso Seguro - Login Necessário</p>
     </div>
     """, unsafe_allow_html=True)
     
@@ -514,7 +736,7 @@ def tela_login():
     
     st.markdown('</div>', unsafe_allow_html=True)
     
-    # Informações de acesso para demonstração
+    # Informações de demonstração
     st.markdown("---")
     st.markdown("### 🎯 Contas de Demonstração:")
     
@@ -525,15 +747,14 @@ def tela_login():
         **👑 Administrador:**
         - **Usuário:** `admin`
         - **Senha:** `admin123`
-        - **Acesso:** Todos os dados + Gerenciar usuários
+        - **Acesso:** Gestão completa
         """)
     
     with col2:
-        # Mostrar alguns usuários cliente dinamicamente
         usuarios_cliente = {k: v for k, v in st.session_state.usuarios_db.items() if v["tipo"] == "cliente" and v["ativo"]}
         if usuarios_cliente:
             st.markdown("**👤 Clientes:**")
-            for usuario_id, dados in list(usuarios_cliente.items())[:3]:  # Mostrar só os 3 primeiros
+            for usuario_id, dados in list(usuarios_cliente.items())[:3]:
                 st.markdown(f"- **Usuário:** `{usuario_id}` | **Senha:** `{dados['senha']}`")
 
 def dashboard_principal():
@@ -544,13 +765,13 @@ def dashboard_principal():
     st.markdown(f"""
     <div class="main-header">
         <h1>🚢 {DADOS_EMPRESA['nome']}</h1>
-        <h3>Sistema de Tracking de Trânsito</h3>
+        <h3>Sistema de Tracking Completo</h3>
         <p>📍 {DADOS_EMPRESA['endereco']} - {DADOS_EMPRESA['cidade']}</p>
     </div>
     """, unsafe_allow_html=True)
     
-    # Badge do usuário e controles
-    col1, col2, col3 = st.columns([4, 1, 1])
+    # Badge do usuário e menu
+    col1, col2, col3, col4, col5 = st.columns([3, 1, 1, 1, 1])
     
     with col1:
         if usuario_info["tipo"] == "admin":
@@ -558,36 +779,38 @@ def dashboard_principal():
         else:
             st.markdown(f'<div class="cliente-badge">👤 Cliente: {usuario_info["nome"]}</div>', unsafe_allow_html=True)
     
-    with col2:
-        if usuario_info["tipo"] == "admin":
+    if usuario_info["tipo"] == "admin":
+        with col2:
+            if st.button("🏢 Clientes"):
+                st.session_state.pagina_atual = "clientes"
+                st.rerun()
+        
+        with col3:
             if st.button("👥 Usuários"):
                 st.session_state.pagina_atual = "usuarios"
                 st.rerun()
+        
+        with col4:
+            if st.button("📊 Dashboard"):
+                st.session_state.pagina_atual = "dashboard"
+                st.rerun()
     
-    with col3:
+    with col5:
         if st.button("🚪 Logout"):
             st.session_state.logado = False
             st.session_state.usuario_info = None
-            if 'pagina_atual' in st.session_state:
-                del st.session_state.pagina_atual
+            st.session_state.pagina_atual = "dashboard"
             st.rerun()
     
-    # Verificar se está na página de usuários (só admin)
-    if 'pagina_atual' in st.session_state and st.session_state.pagina_atual == "usuarios":
-        if usuario_info["tipo"] == "admin":
-            col1, col2 = st.columns([1, 6])
-            with col1:
-                if st.button("⬅️ Voltar"):
-                    del st.session_state.pagina_atual
-                    st.rerun()
-            
-            pagina_gerenciar_usuarios()
-            return
-        else:
-            st.error("❌ Acesso negado!")
-            return
+    # Verificar página atual
+    if st.session_state.pagina_atual == "clientes" and usuario_info["tipo"] == "admin":
+        pagina_clientes()
+        return
+    elif st.session_state.pagina_atual == "usuarios" and usuario_info["tipo"] == "admin":
+        pagina_usuarios()
+        return
     
-    # Resto do dashboard (código anterior)
+    # Dashboard principal
     # Sidebar
     with st.sidebar:
         st.header("🔧 Controles")
@@ -595,7 +818,7 @@ def dashboard_principal():
         if usuario_info["tipo"] == "admin":
             if st.button("📋 Carregar Dados de Exemplo", type="primary"):
                 st.session_state.df_tracking = criar_dados_exemplo()
-                st.success("✅ Dados carregados!")
+                st.success("✅ Dados de exemplo carregados!")
                 st.rerun()
         
         # Upload só para admin
@@ -624,19 +847,70 @@ def dashboard_principal():
         st.write(f"**Nome:** {usuario_info['nome']}")
         st.write(f"**Tipo:** {usuario_info['tipo'].title()}")
         if usuario_info['tipo'] == 'cliente':
-            st.write(f"**Acesso:** {usuario_info['cliente']}")
+            st.write(f"**Cliente:** {usuario_info['cliente_vinculado']}")
         
         # Menu adicional para admin
         if usuario_info["tipo"] == "admin":
             st.markdown("---")
             st.subheader("⚙️ Administração")
+            
+            total_clientes = len(st.session_state.clientes_db)
+            clientes_ativos = sum(1 for c in st.session_state.clientes_db.values() if c["ativo"])
+            st.metric("🏢 Clientes", f"{clientes_ativos}/{total_clientes}")
+            
             total_usuarios = len(st.session_state.usuarios_db)
             usuarios_ativos = sum(1 for u in st.session_state.usuarios_db.values() if u["ativo"])
             st.metric("👥 Usuários", f"{usuarios_ativos}/{total_usuarios}")
     
+    # Verificar se tem dados para mostrar
     if st.session_state.df_tracking.empty:
         if usuario_info["tipo"] == "admin":
-            st.warning("⚠️ Nenhum dado encontrado. Use os controles da barra lateral para carregar dados.")
+            st.info("📋 Nenhum tracking cadastrado ainda. Use os controles da barra lateral para carregar dados de exemplo ou adicione um novo tracking abaixo.")
+            
+            # Mostrar formulário para adicionar primeiro tracking
+            with st.expander("➕ Adicionar Primeiro Tracking", expanded=True):
+                if not st.session_state.clientes_db:
+                    st.warning("⚠️ Cadastre clientes primeiro! Use o menu 'Clientes' acima.")
+                else:
+                    with st.form("primeiro_tracking"):
+                        col1, col2 = st.columns(2)
+                        
+                        with col1:
+                            clientes_disponiveis = list(st.session_state.clientes_db.keys())
+                            cliente_selecionado = st.selectbox("Cliente *", clientes_disponiveis)
+                            container = st.text_input("Container *", placeholder="ex: TCLU1234567")
+                            carregamento = st.text_input("Carregamento", placeholder="DD/MM/AAAA")
+                            embarque = st.text_input("Embarque Navio", placeholder="DD/MM/AAAA")
+                        
+                        with col2:
+                            saida = st.text_input("Saída Navio", placeholder="DD/MM/AAAA")
+                            previsao = st.text_input("Previsão Chegada Paranaguá", placeholder="DD/MM/AAAA")
+                            canal_rfb = st.selectbox("Canal RFB", ['', 'VERDE', 'VERMELHO'])
+                            chegada = st.text_input("Chegada Paranaguá", placeholder="DD/MM/AAAA")
+                        
+                        if st.form_submit_button("📦 Adicionar Tracking", type="primary"):
+                            if cliente_selecionado and container:
+                                novo_tracking = {
+                                    'CLIENTE': cliente_selecionado,
+                                    'CONTAINER': container,
+                                    'CARREGAMENTO': carregamento,
+                                    'EMBARQUE NAVIO': embarque,
+                                    'SAIDA NAVIO': saida,
+                                    'PREVISAO CHEGADA PARANAGUA': previsao,
+                                    'CHEGADA PARANAGUA': chegada,
+                                    'CANAL RFB': canal_rfb,
+                                    'LIBERAÇAO PARANAGUA': '',
+                                    'CHEGADA CIUDAD DEL ESTE PY': '',
+                                    'DESCARREGAMENTO': ''
+                                }
+                                
+                                novo_df = pd.DataFrame([novo_tracking])
+                                st.session_state.df_tracking = pd.concat([st.session_state.df_tracking, novo_df], ignore_index=True)
+                                salvar_dados()
+                                st.success("✅ Primeiro tracking adicionado!")
+                                st.rerun()
+                            else:
+                                st.error("❌ Cliente e Container são obrigatórios!")
         else:
             st.info("📋 Nenhum tracking disponível no momento. Entre em contato com a BRIX para mais informações.")
         return
@@ -645,7 +919,10 @@ def dashboard_principal():
     df_usuario = filtrar_dados_por_cliente(st.session_state.df_tracking, usuario_info)
     
     if df_usuario.empty:
-        st.info(f"📋 Nenhum tracking encontrado para {usuario_info['nome']}.")
+        if usuario_info["tipo"] == "cliente":
+            st.info(f"📋 Nenhum tracking encontrado para {usuario_info['nome']}.")
+        else:
+            st.info("📋 Nenhum tracking encontrado.")
         return
     
     # Métricas principais
@@ -676,7 +953,6 @@ def dashboard_principal():
         col1, col2 = st.columns(2)
         
         with col1:
-            # Gráfico de pizza - Canal RFB
             canal_counts = df_usuario['CANAL RFB'].value_counts()
             if not canal_counts.empty:
                 title_grafico = "📊 Distribuição por Canal RFB" if usuario_info["tipo"] == "admin" else "📊 Seus Containers por Canal RFB"
@@ -690,9 +966,7 @@ def dashboard_principal():
                 st.plotly_chart(fig_pie, use_container_width=True)
         
         with col2:
-            # Timeline ou clientes (dependendo do tipo de usuário)
             if usuario_info["tipo"] == "admin":
-                # Gráfico de clientes para admin
                 cliente_counts = df_usuario['CLIENTE'].value_counts().head(10)
                 if not cliente_counts.empty:
                     fig_bar = px.bar(
@@ -705,7 +979,6 @@ def dashboard_principal():
                     fig_bar.update_layout(height=400, yaxis={'categoryorder': 'total ascending'})
                     st.plotly_chart(fig_bar, use_container_width=True)
             else:
-                # Status timeline para clientes
                 st.markdown("### 📅 Status dos Seus Containers")
                 for _, row in df_usuario.iterrows():
                     status_emoji = "🟢" if row['CANAL RFB'] == 'VERDE' else "🔴" if row['CANAL RFB'] == 'VERMELHO' else "⏳"
@@ -745,7 +1018,6 @@ def dashboard_principal():
     st.subheader(titulo_tabela)
     
     if not df_filtrado.empty:
-        # Aplicar cores à tabela
         styled_df = df_filtrado.style.apply(colorir_linha, axis=1)
         st.dataframe(styled_df, use_container_width=True, height=400)
         
@@ -764,105 +1036,53 @@ def dashboard_principal():
         # Formulário para novo registro (só admin)
         if usuario_info["tipo"] == "admin":
             with st.expander("➕ Adicionar Novo Tracking"):
-                with st.form("novo_tracking"):
-                    col1, col2 = st.columns(2)
-                    
-                    with col1:
-                        # Sugerir clientes existentes
-                        clientes_existentes = [""] + sorted(st.session_state.df_tracking['CLIENTE'].unique().tolist()) if not st.session_state.df_tracking.empty else [""]
+                if not st.session_state.clientes_db:
+                    st.warning("⚠️ Cadastre clientes primeiro! Use o menu 'Clientes' acima.")
+                else:
+                    with st.form("novo_tracking"):
+                        col1, col2 = st.columns(2)
                         
-                        opcao_cliente = st.radio("Cliente:", ["Selecionar existente", "Digitar novo"])
+                        with col1:
+                            clientes_disponiveis = list(st.session_state.clientes_db.keys())
+                            cliente_selecionado = st.selectbox("Cliente *", clientes_disponiveis)
+                            container = st.text_input("Container *", placeholder="ex: TCLU1234567")
+                            carregamento = st.text_input("Carregamento", placeholder="DD/MM/AAAA")
+                            embarque = st.text_input("Embarque Navio", placeholder="DD/MM/AAAA")
+                            saida = st.text_input("Saída Navio", placeholder="DD/MM/AAAA")
+                            previsao = st.text_input("Previsão Chegada Paranaguá", placeholder="DD/MM/AAAA")
                         
-                        if opcao_cliente == "Selecionar existente":
-                            novo_cliente = st.selectbox("Cliente *", clientes_existentes)
-                        else:
-                            novo_cliente = st.text_input("Cliente *", placeholder="Nome do novo cliente...")
+                        with col2:
+                            chegada = st.text_input("Chegada Paranaguá", placeholder="DD/MM/AAAA")
+                            canal_rfb = st.selectbox("Canal RFB", ['', 'VERDE', 'VERMELHO'])
+                            liberacao = st.text_input("Liberação Paranaguá", placeholder="DD/MM/AAAA")
+                            chegada_py = st.text_input("Chegada Ciudad del Este PY", placeholder="DD/MM/AAAA")
+                            descarregamento = st.text_input("Descarregamento", placeholder="DD/MM/AAAA")
                         
-                        novo_container = st.text_input("Container *", placeholder="Número do container...")
-                        carregamento = st.text_input("Carregamento", placeholder="DD/MM/AAAA")
-                        embarque = st.text_input("Embarque Navio", placeholder="DD/MM/AAAA")
-                        saida = st.text_input("Saída Navio", placeholder="DD/MM/AAAA")
-                        previsao = st.text_input("Previsão Chegada Paranaguá", placeholder="DD/MM/AAAA")
-                    
-                    with col2:
-                        chegada = st.text_input("Chegada Paranaguá", placeholder="DD/MM/AAAA")
-                        canal_rfb = st.selectbox("Canal RFB", ['', 'VERDE', 'VERMELHO'])
-                        liberacao = st.text_input("Liberação Paranaguá", placeholder="DD/MM/AAAA")
-                        chegada_py = st.text_input("Chegada Ciudad del Este PY", placeholder="DD/MM/AAAA")
-                        descarregamento = st.text_input("Descarregamento", placeholder="DD/MM/AAAA")
+                        submitted = st.form_submit_button("💾 Salvar Tracking", type="primary")
                         
-                        # Checkbox para criar usuário automaticamente
-                        criar_usuario_auto = st.checkbox("🤖 Criar usuário para este cliente automaticamente")
-                    
-                    submitted = st.form_submit_button("💾 Salvar Tracking", type="primary")
-                    
-                    if submitted:
-                        if not novo_cliente or not novo_container:
-                            st.error("❌ Cliente e Container são obrigatórios!")
-                        else:
-                            novo_registro = {
-                                'CLIENTE': novo_cliente,
-                                'CONTAINER': novo_container,
-                                'CARREGAMENTO': carregamento,
-                                'EMBARQUE NAVIO': embarque,
-                                'SAIDA NAVIO': saida,
-                                'PREVISAO CHEGADA PARANAGUA': previsao,
-                                'CHEGADA PARANAGUA': chegada,
-                                'CANAL RFB': canal_rfb,
-                                'LIBERAÇAO PARANAGUA': liberacao,
-                                'CHEGADA CIUDAD DEL ESTE PY': chegada_py,
-                                'DESCARREGAMENTO': descarregamento
-                            }
-                            
-                            novo_df = pd.DataFrame([novo_registro])
-                            st.session_state.df_tracking = pd.concat([st.session_state.df_tracking, novo_df], ignore_index=True)
-                            
-                            # Criar usuário automaticamente se solicitado
-                            if criar_usuario_auto:
-                                # Verificar se cliente já tem usuário
-                                cliente_ja_tem_usuario = any(
-                                    dados['cliente'] == novo_cliente 
-                                    for dados in st.session_state.usuarios_db.values() 
-                                    if dados['cliente']
-                                )
-                                
-                                if not cliente_ja_tem_usuario:
-                                    usuario_auto = gerar_usuario_automatico(novo_cliente)
-                                    senha_auto = gerar_senha_temporaria()
-                                    
-                                    # Verificar se usuário já existe
-                                    if usuario_auto not in st.session_state.usuarios_db:
-                                        st.session_state.usuarios_db[usuario_auto] = {
-                                            "senha": senha_auto,
-                                            "tipo": "cliente",
-                                            "cliente": novo_cliente,
-                                            "nome": novo_cliente,
-                                            "email": f"contato@{usuario_auto.replace('_', '')}.com.br",
-                                            "ativo": True,
-                                            "data_criacao": datetime.now().strftime("%d/%m/%Y")
-                                        }
-                                        
-                                        salvar_usuarios()
-                                        
-                                        st.success(f"✅ Tracking adicionado e usuário criado!")
-                                        st.info(f"""
-                                        🤖 **Usuário criado automaticamente:**
-                                        - **Usuário:** {usuario_auto}
-                                        - **Senha:** {senha_auto}
-                                        - **Cliente:** {novo_cliente}
-                                        
-                                        📧 Envie essas credenciais para o cliente!
-                                        """)
-                                    else:
-                                        st.success(f"✅ Tracking adicionado!")
-                                        st.warning(f"⚠️ Usuário '{usuario_auto}' já existe")
-                                else:
-                                    st.success(f"✅ Tracking adicionado!")
-                                    st.info(f"ℹ️ Cliente '{novo_cliente}' já possui usuário")
+                        if submitted:
+                            if not cliente_selecionado or not container:
+                                st.error("❌ Cliente e Container são obrigatórios!")
                             else:
+                                novo_registro = {
+                                    'CLIENTE': cliente_selecionado,
+                                    'CONTAINER': container,
+                                    'CARREGAMENTO': carregamento,
+                                    'EMBARQUE NAVIO': embarque,
+                                    'SAIDA NAVIO': saida,
+                                    'PREVISAO CHEGADA PARANAGUA': previsao,
+                                    'CHEGADA PARANAGUA': chegada,
+                                    'CANAL RFB': canal_rfb,
+                                    'LIBERAÇAO PARANAGUA': liberacao,
+                                    'CHEGADA CIUDAD DEL ESTE PY': chegada_py,
+                                    'DESCARREGAMENTO': descarregamento
+                                }
+                                
+                                novo_df = pd.DataFrame([novo_registro])
+                                st.session_state.df_tracking = pd.concat([st.session_state.df_tracking, novo_df], ignore_index=True)
+                                salvar_dados()
                                 st.success("✅ Tracking adicionado com sucesso!")
-                            
-                            st.rerun()
+                                st.rerun()
         
         # Edição de registros (só admin)
         if usuario_info["tipo"] == "admin":
@@ -872,7 +1092,6 @@ def dashboard_principal():
                     registro_selecionado = st.selectbox("Selecione o registro para editar:", opcoes_edicao)
                     
                     if registro_selecionado:
-                        # Encontrar o índice do registro selecionado
                         idx_selecionado = df_filtrado.index[df_filtrado.apply(lambda x: f"{x['CLIENTE']} - {x['CONTAINER']}" == registro_selecionado, axis=1)].tolist()[0]
                         registro = st.session_state.df_tracking.loc[idx_selecionado]
                         
@@ -884,6 +1103,7 @@ def dashboard_principal():
                         with col2:
                             if st.button("🗑️ Excluir Registro", type="secondary"):
                                 st.session_state.df_tracking = st.session_state.df_tracking.drop(idx_selecionado).reset_index(drop=True)
+                                salvar_dados()
                                 st.success("🗑️ Registro excluído!")
                                 st.rerun()
                         
@@ -892,7 +1112,9 @@ def dashboard_principal():
                             col1, col2 = st.columns(2)
                             
                             with col1:
-                                edit_cliente = st.text_input("Cliente", value=registro['CLIENTE'])
+                                clientes_disponiveis = list(st.session_state.clientes_db.keys())
+                                cliente_atual_idx = clientes_disponiveis.index(registro['CLIENTE']) if registro['CLIENTE'] in clientes_disponiveis else 0
+                                edit_cliente = st.selectbox("Cliente", clientes_disponiveis, index=cliente_atual_idx)
                                 edit_container = st.text_input("Container", value=registro['CONTAINER'])
                                 edit_carregamento = st.text_input("Carregamento", value=registro['CARREGAMENTO'])
                                 edit_embarque = st.text_input("Embarque Navio", value=registro['EMBARQUE NAVIO'])
@@ -913,18 +1135,18 @@ def dashboard_principal():
                                 if not edit_cliente or not edit_container:
                                     st.error("❌ Cliente e Container são obrigatórios!")
                                 else:
-                                    # Atualizar o registro
                                     st.session_state.df_tracking.loc[idx_selecionado] = [
                                         edit_cliente, edit_container, edit_carregamento, edit_embarque,
                                         edit_saida, edit_previsao, edit_chegada, edit_canal,
                                         edit_liberacao, edit_chegada_py, edit_descarregamento
                                     ]
+                                    salvar_dados()
                                     st.success("✅ Registro atualizado com sucesso!")
                                     st.rerun()
     else:
         st.info("🔍 Nenhum registro encontrado com os filtros aplicados.")
     
-    # Alertas específicos
+    # Alertas
     if not df_usuario.empty:
         containers_vermelho = df_usuario[df_usuario['CANAL RFB'] == 'VERMELHO']
         
@@ -943,7 +1165,7 @@ def dashboard_principal():
 
 def main():
     """Função principal da aplicação"""
-    inicializar_sessao()
+    inicializar_dados()
     
     if not st.session_state.logado:
         tela_login()
