@@ -1067,27 +1067,6 @@ def pagina_usuarios():
 
 def dashboard_principal():
     """Dashboard principal"""
-    # CSS específico para tabela (forçar texto preto)
-    st.markdown("""
-    <style>
-    .stDataFrame table {
-        color: #000000 !important;
-    }
-    .stDataFrame td, .stDataFrame th {
-        color: #000000 !important;
-        background-color: #ffffff !important;
-    }
-    .stDataFrame td[style*="background-color: #d5f4e6"] {
-        color: #000000 !important;
-        background-color: #d5f4e6 !important;
-    }
-    .stDataFrame td[style*="background-color: #fadbd8"] {
-        color: #000000 !important;
-        background-color: #fadbd8 !important;
-    }
-    </style>
-    """, unsafe_allow_html=True)
-    
     usuario_info = st.session_state.usuario_info
     
     # Cabeçalho
@@ -1140,7 +1119,6 @@ def dashboard_principal():
         return
     
     # Dashboard principal
-    # Sidebar com sistema de backup
     sidebar_backup_system()
     
     # Verificar se tem dados para mostrar
@@ -1316,19 +1294,7 @@ def dashboard_principal():
         # Legenda
         st.info("🟢 Verde = Liberado | 🔴 Vermelho = Inspeção | ⏳ Pendente = Aguardando")
         
-        # Download dos dados
-        csv = df_filtrado.to_csv(index=False)
-        nome_arquivo = f"tracking_todos_{datetime.now().strftime('%Y%m%d')}.csv" if usuario_info["tipo"] == "admin" else f"tracking_{usuario_info['nome'].replace(' ', '_')}_{datetime.now().strftime('%Y%m%d')}.csv"
-        label_download = "💾 Baixar Todos os Dados (CSV)" if usuario_info["tipo"] == "admin" else "💾 Baixar Seus Dados (CSV)"
-        
-        st.download_button(
-            label=label_download,
-            data=csv,
-            file_name=nome_arquivo,
-            mime="text/csv"
-        )
-            
-        # Download dos dados
+        # Download dos dados (SEM DUPLICAÇÃO)
         csv = df_filtrado.to_csv(index=False)
         nome_arquivo = f"tracking_todos_{datetime.now().strftime('%Y%m%d')}.csv" if usuario_info["tipo"] == "admin" else f"tracking_{usuario_info['nome'].replace(' ', '_')}_{datetime.now().strftime('%Y%m%d')}.csv"
         label_download = "💾 Baixar Todos os Dados (CSV)" if usuario_info["tipo"] == "admin" else "💾 Baixar Seus Dados (CSV)"
