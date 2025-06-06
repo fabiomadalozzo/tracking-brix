@@ -412,7 +412,84 @@ def sidebar_backup_system():
                     
             except Exception as e:
                 st.error(f"❌ Erro ao ler arquivo: {e}")
-
+def sistema_backup_automatico():
+    """Sistema de backup automático com Dropbox integrado"""
+    with st.sidebar:
+        st.markdown("---")
+        st.subheader("☁️ Sincronização Dropbox")
+        
+        # URL pré-configurada do seu Dropbox
+        DROPBOX_URL = "https://www.dropbox.com/scl/fi/jiugv7kax7gmatyk19oto/backup_brix.json?rlkey=wvwru4wrnl10lsjib8c7d0zyl&dl=1"
+        
+        # Botões de sincronização
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            if st.button("📥 Sincronizar", type="primary", help="Baixa dados do Dropbox"):
+                try:
+                    with st.spinner("🔄 Sincronizando..."):
+                        import requests
+                        response = requests.get(DROPBOX_URL, timeout=10)
+                        
+                        if response.status_code == 200:
+                            backup_data = response.json()
+                            
+                            # Restaurar dados
+                            st.session_state.clientes_db = backup_data['clientes']
+                            st.session_state.usuarios_db = backup_data['usuarios']
+                            st.session_state.df_tracking = pd.DataFrame(backup_data['trackings'])
+                            st.session_state.dados_restaurados = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+                            
+                            st.success("✅ Dados sincronizados do Dropbox!")
+                            st.rerun()
+                        else:
+                            st.error(f"❌ Erro HTTP: {response.status_code}")
+                            
+                except requests.exceptions.RequestException as e:
+                    st.error("❌ Erro de conexão. Verifique sua internet.")
+                except json.JSONDecodeError:
+                    st.error("❌ Arquivo JSON inválido no Dropbox.")
+                except Exception as e:
+                    st.error(f"❌ Erro: {str(e)}")
+        
+        with col2:
+            if st.button("📤 Backup", help="Cria backup para atualizar Dropbox"):
+                backup_json = criar_backup_manual()
+                nome_arquivo = "backup_brix.json"
+                
+                st.download_button(
+                    label="⬇️ Baixar",
+                    data=backup_json,
+                    file_name=nome_arquivo,
+                    mime="application/json",
+                    help="Substitua o arquivo no Dropbox"
+                )
+                st.info("💡 Substitua o arquivo 'backup_brix.json' na sua pasta do Dropbox")
+        
+        # Status da última sincronização
+        if 'dados_restaurados' in st.session_state:
+            st.success(f"🕐 Última sync: {st.session_state.dados_restaurados}")
+        
+        # Instruções simplificadas
+        with st.expander("📋 Como funciona"):
+            st.markdown("""
+            **🔄 Para sincronizar dados:**
+            1. **📥 Sincronizar** - baixa dados do Dropbox
+            2. **📤 Backup** - cria arquivo para subir no Dropbox
+            
+            **📂 Localização do arquivo:**
+            `C:\\Users\\FABIO MADALOZZO\\Dropbox\\tracking-brix\\backup_brix.json`
+            
+            **💡 Dica:** Sempre sincronize ao abrir o sistema!
+            """)
+        
+        # Informações do arquivo atual
+        st.markdown("### 📄 Dados no Dropbox:")
+        st.write("🏢 Clientes: 3 (ABC, XYZ, MC)")
+        st.write("👥 Usuários: 4 (admin, abc, xyz, aristide)")
+        st.write("📦 Trackings: 4")
+        st.write("📅 Última atualização: 06/06/2025")
+        
 def tela_login():
     """Tela de login - CORRIGIDA para mobile"""
     st.markdown("""
@@ -435,7 +512,7 @@ def tela_login():
     
     st.markdown("### 🔐 Fazer Login")
     
-    # CORREÇÃO MOBILE: Usar columns ao invés de form
+    # Usar columns ao invés de form para melhor compatibilidade mobile
     col1, col2 = st.columns([1, 1])
     
     with col1:
@@ -453,16 +530,11 @@ def tela_login():
             key="mobile_login_pass"
         )
     
-    # Botão de login FORA do form
+    # Botão de login
     if st.button("🚀 Entrar", type="primary", use_container_width=True):
         if usuario and senha:
-            # CORREÇÃO: Verificação mais simples
             usuario_limpo = str(usuario).strip().lower()
             senha_limpa = str(senha).strip()
-            
-            # Debug para mobile
-            st.write(f"Debug - Usuário digitado: '{usuario_limpo}'")
-            st.write(f"Debug - Senha digitada: '{senha_limpa}'")
             
             user_encontrado = None
             for user_id, user_data in st.session_state.usuarios_db.items():
@@ -478,8 +550,6 @@ def tela_login():
                 st.rerun()
             else:
                 st.error("❌ Usuário ou senha incorretos!")
-                # Mostrar usuários disponíveis para debug
-                st.write("Usuários disponíveis:", list(st.session_state.usuarios_db.keys()))
         else:
             st.warning("⚠️ Preencha todos os campos!")
     
@@ -506,7 +576,7 @@ def tela_login():
         - Cliente ABC: `empresa_abc` / `abc123`
         - Cliente XYZ: `comercial_xyz` / `xyz123`
         """)
-
+        
 def pagina_clientes():
     """Página para gerenciar clientes"""
     st.header("🏢 Gerenciamento de Clientes")
