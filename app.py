@@ -479,7 +479,7 @@ def sistema_backup_automatico():
         st.markdown("---")
         st.subheader("☁️ Sincronização Dropbox")
         
-        # URL pré-configurada do seu Dropbox
+        # URL pré-configurada do seu Dropbox (FUNCIONA EM QUALQUER COMPUTADOR)
         DROPBOX_URL = "https://www.dropbox.com/scl/fi/jiugv7kax7gmatyk19oto/backup_brix.json?rlkey=wvwru4wrnl10lsjib8c7d0zyl&dl=1"
         
         # Botões de sincronização
@@ -490,7 +490,7 @@ def sistema_backup_automatico():
                 try:
                     with st.spinner("🔄 Sincronizando..."):
                         import requests
-                        response = requests.get(DROPBOX_URL, timeout=10)
+                        response = requests.get(DROPBOX_URL, timeout=15)
                         
                         if response.status_code == 200:
                             backup_data = response.json()
@@ -507,7 +507,8 @@ def sistema_backup_automatico():
                             st.error(f"❌ Erro HTTP: {response.status_code}")
                             
                 except requests.exceptions.RequestException as e:
-                    st.error("❌ Erro de conexão. Verifique sua internet.")
+                    st.error("❌ Erro de conexão. Verifique sua internet ou tente novamente.")
+                    st.info("💡 Dica: Aguarde alguns segundos e clique em 'Sincronizar' novamente")
                 except json.JSONDecodeError:
                     st.error("❌ Arquivo JSON inválido no Dropbox.")
                 except Exception as e:
@@ -531,25 +532,37 @@ def sistema_backup_automatico():
         if 'dados_restaurados' in st.session_state:
             st.success(f"🕐 Última sync: {st.session_state.dados_restaurados}")
         
-        # Instruções simplificadas
+        # Instruções simplificadas - SEM CAMINHO ESPECÍFICO
         with st.expander("📋 Como funciona"):
             st.markdown("""
             **🔄 Para sincronizar dados:**
-            1. **📥 Sincronizar** - baixa dados do Dropbox
+            1. **📥 Sincronizar** - baixa dados do Dropbox automaticamente
             2. **📤 Backup** - cria arquivo para subir no Dropbox
             
-            **📂 Localização do arquivo:**
-            `C:\\Users\\FABIO MADALOZZO\\Dropbox\\tracking-brix\\backup_brix.json`
+            **📂 Onde encontrar o arquivo:**
+            - Abra sua pasta do Dropbox
+            - Procure a pasta: `tracking-brix`
+            - Arquivo: `backup_brix.json`
             
-            **💡 Dica:** Sempre sincronize ao abrir o sistema!
+            **💡 Funciona em qualquer computador!**
             """)
         
         # Informações do arquivo atual
-        st.markdown("### 📄 Dados no Dropbox:")
-        st.write("🏢 Clientes: 3 (ABC, XYZ, MC)")
-        st.write("👥 Usuários: 4 (admin, abc, xyz, aristide)")
-        st.write("📦 Trackings: 4")
-        st.write("📅 Última atualização: 06/06/2025")
+        st.markdown("### 📄 Sistema de Backup:")
+        st.write("☁️ **Sincronização:** Automática via Dropbox")
+        st.write("🌐 **Multi-dispositivo:** Funciona em qualquer PC")
+        st.write("🔄 **Atualização:** Manual (faça backup após mudanças)")
+        
+        # Status de conectividade
+        try:
+            import requests
+            response = requests.head(DROPBOX_URL, timeout=5)
+            if response.status_code == 200:
+                st.success("✅ Conectado ao Dropbox")
+            else:
+                st.warning("⚠️ Problema na conexão")
+        except:
+            st.error("❌ Sem conexão com Dropbox")
         
 def tela_login():
     """Tela de login - CORRIGIDA para mobile"""
