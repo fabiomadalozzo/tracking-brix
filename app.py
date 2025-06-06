@@ -1355,14 +1355,8 @@ def dashboard_principal():
                 st.markdown("---")
 
         # OPÇÃO 2: Tabela simples (para quem prefere) - VERSÃO CORRIGIDA
-        if st.checkbox("📊 Ver como Tabela Tradicional"):
-            # Tabela simples sem HTML complexo
-            st.dataframe(
-                df_display, 
-                use_container_width=True, 
-                height=400,
-                hide_index=True
-            )
+        if st.checkbox("📊 Ver como Tabela"):
+            st.dataframe(df_display, use_container_width=True, height=400)
 
         # Legenda
         st.info("🟢 Verde = Liberado | 🔴 Vermelho = Inspeção | ⏳ Pendente = Aguardando")
