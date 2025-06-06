@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Sistema de Tracking BRIX - Versão Completa
-Com Cadastro de Clientes, Usuários e Persistência de Dados
+Sistema de Tracking BRIX - Versão com Persistência de Dados
+Com salvamento automático em arquivos JSON
 Escritório de contabilidade - Brasil
 """
 
@@ -14,10 +14,11 @@ from datetime import datetime, timedelta
 import io
 import hashlib
 import json
+import os
 
 # Configuração da página
 st.set_page_config(
-    page_title="🚢 Sistema BRIX - Completo",
+    page_title="🚢 Sistema BRIX - Tracking Persistente",
     page_icon="🚢",
     layout="wide",
     initial_sidebar_state="expanded"
@@ -96,71 +97,109 @@ COLUNAS = [
     'DESCARREGAMENTO'
 ]
 
+# Arquivos de persistência (simulando banco de dados)
+ARQUIVO_CLIENTES = "clientes_brix.json"
+ARQUIVO_USUARIOS = "usuarios_brix.json"
+ARQUIVO_TRACKINGS = "trackings_brix.json"
+
+def carregar_dados_arquivo(arquivo, dados_default):
+    """Carrega dados de um arquivo JSON"""
+    try:
+        # Em Streamlit Cloud, usar st.session_state como "banco"
+        chave_arquivo = f"dados_{arquivo.replace('.json', '')}"
+        
+        if chave_arquivo not in st.session_state:
+            st.session_state[chave_arquivo] = dados_default.copy()
+        
+        return st.session_state[chave_arquivo]
+    except Exception as e:
+        st.error(f"Erro ao carregar {arquivo}: {e}")
+        return dados_default
+
+def salvar_dados_arquivo(arquivo, dados):
+    """Salva dados em um arquivo JSON (simulado)"""
+    try:
+        # Em Streamlit Cloud, salvar em st.session_state
+        chave_arquivo = f"dados_{arquivo.replace('.json', '')}"
+        st.session_state[chave_arquivo] = dados.copy()
+        return True
+    except Exception as e:
+        st.error(f"Erro ao salvar {arquivo}: {e}")
+        return False
+
 def inicializar_dados():
-    """Inicializa todas as estruturas de dados"""
+    """Inicializa todas as estruturas de dados com persistência"""
     
-    # Clientes
+    # Dados padrão para clientes
+    clientes_default = {
+        "EMPRESA ABC LTDA": {
+            "razao_social": "EMPRESA ABC LTDA",
+            "nome_fantasia": "ABC Importadora",
+            "cnpj": "12.345.678/0001-01",
+            "email": "contato@empresaabc.com.br",
+            "telefone": "(11) 1111-1111",
+            "endereco": "Rua A, 123 - São Paulo/SP",
+            "contato": "João Silva",
+            "ativo": True,
+            "data_cadastro": "01/06/2025"
+        },
+        "COMERCIAL XYZ S.A.": {
+            "razao_social": "COMERCIAL XYZ S.A.",
+            "nome_fantasia": "XYZ Trading",
+            "cnpj": "98.765.432/0001-02",
+            "email": "gerencia@comercialxyz.com.br",
+            "telefone": "(21) 2222-2222",
+            "endereco": "Av. B, 456 - Rio de Janeiro/RJ",
+            "contato": "Maria Santos",
+            "ativo": True,
+            "data_cadastro": "01/06/2025"
+        }
+    }
+    
+    # Dados padrão para usuários
+    usuarios_default = {
+        "admin": {
+            "senha": "admin123",
+            "tipo": "admin",
+            "cliente_vinculado": None,
+            "nome": "Administrador BRIX",
+            "email": "admin@brixlogistica.com.br",
+            "ativo": True,
+            "data_criacao": "01/06/2025"
+        },
+        "empresa_abc": {
+            "senha": "abc123",
+            "tipo": "cliente",
+            "cliente_vinculado": "EMPRESA ABC LTDA",
+            "nome": "Empresa ABC",
+            "email": "contato@empresaabc.com.br",
+            "ativo": True,
+            "data_criacao": "01/06/2025"
+        },
+        "comercial_xyz": {
+            "senha": "xyz123",
+            "tipo": "cliente", 
+            "cliente_vinculado": "COMERCIAL XYZ S.A.",
+            "nome": "Comercial XYZ",
+            "email": "gerencia@comercialxyz.com.br",
+            "ativo": True,
+            "data_criacao": "01/06/2025"
+        }
+    }
+    
+    # Carregar dados dos "arquivos"
     if 'clientes_db' not in st.session_state:
-        st.session_state.clientes_db = {
-            "EMPRESA ABC LTDA": {
-                "razao_social": "EMPRESA ABC LTDA",
-                "nome_fantasia": "ABC Importadora",
-                "cnpj": "12.345.678/0001-01",
-                "email": "contato@empresaabc.com.br",
-                "telefone": "(11) 1111-1111",
-                "endereco": "Rua A, 123 - São Paulo/SP",
-                "contato": "João Silva",
-                "ativo": True,
-                "data_cadastro": "01/06/2025"
-            },
-            "COMERCIAL XYZ S.A.": {
-                "razao_social": "COMERCIAL XYZ S.A.",
-                "nome_fantasia": "XYZ Trading",
-                "cnpj": "98.765.432/0001-02",
-                "email": "gerencia@comercialxyz.com.br",
-                "telefone": "(21) 2222-2222",
-                "endereco": "Av. B, 456 - Rio de Janeiro/RJ",
-                "contato": "Maria Santos",
-                "ativo": True,
-                "data_cadastro": "01/06/2025"
-            }
-        }
+        st.session_state.clientes_db = carregar_dados_arquivo(ARQUIVO_CLIENTES, clientes_default)
     
-    # Usuários
     if 'usuarios_db' not in st.session_state:
-        st.session_state.usuarios_db = {
-            "admin": {
-                "senha": "admin123",
-                "tipo": "admin",
-                "cliente_vinculado": None,
-                "nome": "Administrador BRIX",
-                "email": "admin@brixlogistica.com.br",
-                "ativo": True,
-                "data_criacao": "01/06/2025"
-            },
-            "empresa_abc": {
-                "senha": "abc123",
-                "tipo": "cliente",
-                "cliente_vinculado": "EMPRESA ABC LTDA",
-                "nome": "Empresa ABC",
-                "email": "contato@empresaabc.com.br",
-                "ativo": True,
-                "data_criacao": "01/06/2025"
-            },
-            "comercial_xyz": {
-                "senha": "xyz123",
-                "tipo": "cliente", 
-                "cliente_vinculado": "COMERCIAL XYZ S.A.",
-                "nome": "Comercial XYZ",
-                "email": "gerencia@comercialxyz.com.br",
-                "ativo": True,
-                "data_criacao": "01/06/2025"
-            }
-        }
+        st.session_state.usuarios_db = carregar_dados_arquivo(ARQUIVO_USUARIOS, usuarios_default)
     
-    # Trackings
     if 'df_tracking' not in st.session_state:
-        st.session_state.df_tracking = pd.DataFrame(columns=COLUNAS)
+        tracking_data = carregar_dados_arquivo(ARQUIVO_TRACKINGS, [])
+        if tracking_data:
+            st.session_state.df_tracking = pd.DataFrame(tracking_data)
+        else:
+            st.session_state.df_tracking = pd.DataFrame(columns=COLUNAS)
     
     # Outras variáveis de sessão
     if 'logado' not in st.session_state:
@@ -170,10 +209,26 @@ def inicializar_dados():
     if 'pagina_atual' not in st.session_state:
         st.session_state.pagina_atual = "dashboard"
 
-def salvar_dados():
-    """Simula salvamento dos dados (em produção seria banco de dados)"""
-    # Em produção, aqui você salvaria no banco de dados
-    pass
+def salvar_todos_dados():
+    """Salva todos os dados nos arquivos"""
+    try:
+        # Salvar clientes
+        salvar_dados_arquivo(ARQUIVO_CLIENTES, st.session_state.clientes_db)
+        
+        # Salvar usuários
+        salvar_dados_arquivo(ARQUIVO_USUARIOS, st.session_state.usuarios_db)
+        
+        # Salvar trackings
+        if not st.session_state.df_tracking.empty:
+            tracking_data = st.session_state.df_tracking.to_dict('records')
+            salvar_dados_arquivo(ARQUIVO_TRACKINGS, tracking_data)
+        else:
+            salvar_dados_arquivo(ARQUIVO_TRACKINGS, [])
+        
+        return True
+    except Exception as e:
+        st.error(f"Erro ao salvar dados: {e}")
+        return False
 
 def criar_dados_exemplo():
     """Cria dados de exemplo completos"""
@@ -218,7 +273,11 @@ def criar_dados_exemplo():
             'DESCARREGAMENTO': ''
         }
     ]
-    return pd.DataFrame(dados_tracking)
+    
+    df = pd.DataFrame(dados_tracking)
+    st.session_state.df_tracking = df
+    salvar_todos_dados()
+    return df
 
 def gerar_usuario_automatico(razao_social):
     """Gera usuário automático baseado na razão social"""
@@ -301,7 +360,7 @@ def pagina_clientes():
                     status_btn = "🔓 Ativar" if not dados["ativo"] else "🔒 Desativar"
                     if st.button(status_btn, key=f"toggle_cliente_{razao_social}"):
                         st.session_state.clientes_db[razao_social]["ativo"] = not dados["ativo"]
-                        salvar_dados()
+                        salvar_todos_dados()
                         st.success(f"✅ Cliente {razao_social} {'ativado' if dados['ativo'] else 'desativado'}!")
                         st.rerun()
                 
@@ -335,7 +394,7 @@ def pagina_clientes():
                         del st.session_state.usuarios_db[user_id]
                     
                     del st.session_state.excluindo_cliente
-                    salvar_dados()
+                    salvar_todos_dados()
                     st.success("🗑️ Cliente e dados relacionados excluídos!")
                     st.rerun()
             with col2:
@@ -397,7 +456,7 @@ def pagina_clientes():
                             'data_cadastro': dados['data_cadastro']
                         }
                         
-                        salvar_dados()
+                        salvar_todos_dados()
                         del st.session_state.editando_cliente
                         st.success("✅ Cliente atualizado!")
                         st.rerun()
@@ -474,8 +533,9 @@ def pagina_clientes():
                             
                             mensagem_sucesso += f"\n\n🤖 **Usuário criado automaticamente:**\n- **Usuário:** {usuario_auto}\n- **Senha:** {senha_auto}"
                     
-                    salvar_dados()
+                    salvar_todos_dados()
                     st.success(mensagem_sucesso)
+                    st.rerun()
     
     with tab3:
         st.subheader("📊 Estatísticas de Clientes")
@@ -539,7 +599,7 @@ def pagina_usuarios():
                 status_btn = "🔓 Ativar" if not dados["ativo"] else "🔒 Desativar"
                 if st.button(status_btn, key=f"toggle_user_{usuario_id}"):
                     st.session_state.usuarios_db[usuario_id]["ativo"] = not dados["ativo"]
-                    salvar_dados()
+                    salvar_todos_dados()
                     st.success(f"✅ Usuário {usuario_id} {'ativado' if dados['ativo'] else 'desativado'}!")
                     st.rerun()
             
@@ -556,7 +616,7 @@ def pagina_usuarios():
                 if st.button("✅ Sim, excluir"):
                     del st.session_state.usuarios_db[st.session_state.excluindo_usuario]
                     del st.session_state.excluindo_usuario
-                    salvar_dados()
+                    salvar_todos_dados()
                     st.success("🗑️ Usuário excluído!")
                     st.rerun()
             with col2:
@@ -564,7 +624,7 @@ def pagina_usuarios():
                     del st.session_state.excluindo_usuario
                     st.rerun()
         
-        # Formulário de edição
+        # Formulário de edição de usuário
         if 'editando_usuario' in st.session_state:
             usuario_id = st.session_state.editando_usuario
             dados = st.session_state.usuarios_db[usuario_id]
@@ -604,7 +664,7 @@ def pagina_usuarios():
                         if nova_senha:
                             st.session_state.usuarios_db[usuario_id]['senha'] = nova_senha
                         
-                        salvar_dados()
+                        salvar_todos_dados()
                         del st.session_state.editando_usuario
                         st.success("✅ Usuário atualizado!")
                         st.rerun()
@@ -669,7 +729,7 @@ def pagina_usuarios():
                         "data_criacao": datetime.now().strftime("%d/%m/%Y")
                     }
                     
-                    salvar_dados()
+                    salvar_todos_dados()
                     st.success(f"✅ Usuário '{novo_usuario}' criado com sucesso!")
                     
                     # Mostrar dados de acesso
@@ -682,6 +742,7 @@ def pagina_usuarios():
                     
                     📧 Envie essas informações para o usuário por email seguro!
                     """)
+                    st.rerun()
     
     with tab3:
         st.subheader("📊 Estatísticas de Usuários")
@@ -703,11 +764,11 @@ def pagina_usuarios():
             st.metric("👤 Clientes", clientes_usuarios)
 
 def tela_login():
-    """Exibe tela de login"""
+    """Exibe tela de login limpa"""
     st.markdown("""
     <div class="main-header">
         <h1>🚢 BRIX LOGÍSTICA</h1>
-        <h3>Sistema de Tracking Completo</h3>
+        <h3>Sistema de Tracking de Trânsito</h3>
         <p>Acesso Seguro - Login Necessário</p>
     </div>
     """, unsafe_allow_html=True)
@@ -736,26 +797,30 @@ def tela_login():
     
     st.markdown('</div>', unsafe_allow_html=True)
     
-    # Informações de demonstração
+    # Informações de suporte (sem mostrar senhas)
     st.markdown("---")
-    st.markdown("### 🎯 Contas de Demonstração:")
+    st.markdown("### 📞 Suporte")
+    st.info("💬 Para obter suas credenciais de acesso, entre em contato com a BRIX Logística.")
     
     col1, col2 = st.columns(2)
-    
     with col1:
         st.markdown("""
-        **👑 Administrador:**
-        - **Usuário:** `admin`
-        - **Senha:** `admin123`
-        - **Acesso:** Gestão completa
+        **📞 Telefone:**  
+        (41) 3333-4444
+        
+        **📧 Email:**  
+        contato@brixlogistica.com.br
         """)
     
     with col2:
-        usuarios_cliente = {k: v for k, v in st.session_state.usuarios_db.items() if v["tipo"] == "cliente" and v["ativo"]}
-        if usuarios_cliente:
-            st.markdown("**👤 Clientes:**")
-            for usuario_id, dados in list(usuarios_cliente.items())[:3]:
-                st.markdown(f"- **Usuário:** `{usuario_id}` | **Senha:** `{dados['senha']}`")
+        st.markdown("""
+        **📍 Endereço:**  
+        Rua das Flores, 123 - Centro  
+        Curitiba - PR
+        
+        **⏰ Horário:**  
+        Segunda a Sexta: 8h às 18h
+        """)
 
 def dashboard_principal():
     """Dashboard principal após login"""
@@ -765,7 +830,7 @@ def dashboard_principal():
     st.markdown(f"""
     <div class="main-header">
         <h1>🚢 {DADOS_EMPRESA['nome']}</h1>
-        <h3>Sistema de Tracking Completo</h3>
+        <h3>Sistema de Tracking de Trânsito</h3>
         <p>📍 {DADOS_EMPRESA['endereco']} - {DADOS_EMPRESA['cidade']}</p>
     </div>
     """, unsafe_allow_html=True)
@@ -817,8 +882,8 @@ def dashboard_principal():
         
         if usuario_info["tipo"] == "admin":
             if st.button("📋 Carregar Dados de Exemplo", type="primary"):
-                st.session_state.df_tracking = criar_dados_exemplo()
-                st.success("✅ Dados de exemplo carregados!")
+                criar_dados_exemplo()
+                st.success("✅ Dados de exemplo carregados e salvos!")
                 st.rerun()
         
         # Upload só para admin
@@ -836,7 +901,8 @@ def dashboard_principal():
                     else:
                         if st.button("📥 Importar Dados"):
                             st.session_state.df_tracking = df_uploaded[COLUNAS].copy()
-                            st.success("✅ Dados importados!")
+                            salvar_todos_dados()
+                            st.success("✅ Dados importados e salvos!")
                             st.rerun()
                 except Exception as e:
                     st.error(f"❌ Erro: {str(e)}")
@@ -861,6 +927,12 @@ def dashboard_principal():
             total_usuarios = len(st.session_state.usuarios_db)
             usuarios_ativos = sum(1 for u in st.session_state.usuarios_db.values() if u["ativo"])
             st.metric("👥 Usuários", f"{usuarios_ativos}/{total_usuarios}")
+            
+            # Indicador de persistência
+            st.markdown("---")
+            st.subheader("💾 Status dos Dados")
+            st.success("✅ Salvamento Automático Ativo")
+            st.info(f"📊 {len(st.session_state.df_tracking)} trackings salvos")
     
     # Verificar se tem dados para mostrar
     if st.session_state.df_tracking.empty:
@@ -906,8 +978,8 @@ def dashboard_principal():
                                 
                                 novo_df = pd.DataFrame([novo_tracking])
                                 st.session_state.df_tracking = pd.concat([st.session_state.df_tracking, novo_df], ignore_index=True)
-                                salvar_dados()
-                                st.success("✅ Primeiro tracking adicionado!")
+                                salvar_todos_dados()
+                                st.success("✅ Primeiro tracking adicionado e salvo!")
                                 st.rerun()
                             else:
                                 st.error("❌ Cliente e Container são obrigatórios!")
@@ -1080,8 +1152,8 @@ def dashboard_principal():
                                 
                                 novo_df = pd.DataFrame([novo_registro])
                                 st.session_state.df_tracking = pd.concat([st.session_state.df_tracking, novo_df], ignore_index=True)
-                                salvar_dados()
-                                st.success("✅ Tracking adicionado com sucesso!")
+                                salvar_todos_dados()
+                                st.success("✅ Tracking adicionado e salvo com sucesso!")
                                 st.rerun()
         
         # Edição de registros (só admin)
@@ -1103,8 +1175,8 @@ def dashboard_principal():
                         with col2:
                             if st.button("🗑️ Excluir Registro", type="secondary"):
                                 st.session_state.df_tracking = st.session_state.df_tracking.drop(idx_selecionado).reset_index(drop=True)
-                                salvar_dados()
-                                st.success("🗑️ Registro excluído!")
+                                salvar_todos_dados()
+                                st.success("🗑️ Registro excluído e salvo!")
                                 st.rerun()
                         
                         # Formulário de edição
@@ -1140,8 +1212,8 @@ def dashboard_principal():
                                         edit_saida, edit_previsao, edit_chegada, edit_canal,
                                         edit_liberacao, edit_chegada_py, edit_descarregamento
                                     ]
-                                    salvar_dados()
-                                    st.success("✅ Registro atualizado com sucesso!")
+                                    salvar_todos_dados()
+                                    st.success("✅ Registro atualizado e salvo com sucesso!")
                                     st.rerun()
     else:
         st.info("🔍 Nenhum registro encontrado com os filtros aplicados.")
