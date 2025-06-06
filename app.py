@@ -414,7 +414,7 @@ def sidebar_backup_system():
                 st.error(f"❌ Erro ao ler arquivo: {e}")
 
 def tela_login():
-    """Tela de login"""
+    """Tela de login - CORRIGIDA para mobile"""
     st.markdown("""
     <div class="main-header">
         <h1>🚢 BRIX LOGÍSTICA</h1>
@@ -435,34 +435,53 @@ def tela_login():
     
     st.markdown("### 🔐 Fazer Login")
     
-    with st.form("login_form"):
+    # CORREÇÃO MOBILE: Usar columns ao invés de form
+    col1, col2 = st.columns([1, 1])
+    
+    with col1:
         usuario = st.text_input(
             "👤 Usuário:", 
             placeholder="Digite seu usuário...",
-            key="login_user",
-            help="Não diferencia maiúsculas/minúsculas"
+            key="mobile_login_user"
         )
+    
+    with col2:
         senha = st.text_input(
             "🔑 Senha:", 
             type="password", 
             placeholder="Digite sua senha...",
-            key="login_pass"
+            key="mobile_login_pass"
         )
-        
-        submitted = st.form_submit_button("🚀 Entrar", type="primary")
-        
-        if submitted:
-            if usuario and senha:
-                user_info = verificar_login(usuario, senha)
-                if user_info:
-                    st.session_state.logado = True
-                    st.session_state.usuario_info = user_info
-                    st.success(f"✅ Bem-vindo, {user_info['nome']}!")
-                    st.rerun()
-                else:
-                    st.error("❌ Usuário ou senha incorretos, ou conta desativada!")
+    
+    # Botão de login FORA do form
+    if st.button("🚀 Entrar", type="primary", use_container_width=True):
+        if usuario and senha:
+            # CORREÇÃO: Verificação mais simples
+            usuario_limpo = str(usuario).strip().lower()
+            senha_limpa = str(senha).strip()
+            
+            # Debug para mobile
+            st.write(f"Debug - Usuário digitado: '{usuario_limpo}'")
+            st.write(f"Debug - Senha digitada: '{senha_limpa}'")
+            
+            user_encontrado = None
+            for user_id, user_data in st.session_state.usuarios_db.items():
+                if str(user_id).lower() == usuario_limpo:
+                    if str(user_data["senha"]) == senha_limpa and user_data["ativo"]:
+                        user_encontrado = user_data
+                        break
+            
+            if user_encontrado:
+                st.session_state.logado = True
+                st.session_state.usuario_info = user_encontrado
+                st.success(f"✅ Bem-vindo, {user_encontrado['nome']}!")
+                st.rerun()
             else:
-                st.warning("⚠️ Preencha todos os campos!")
+                st.error("❌ Usuário ou senha incorretos!")
+                # Mostrar usuários disponíveis para debug
+                st.write("Usuários disponíveis:", list(st.session_state.usuarios_db.keys()))
+        else:
+            st.warning("⚠️ Preencha todos os campos!")
     
     st.markdown('</div>', unsafe_allow_html=True)
     
