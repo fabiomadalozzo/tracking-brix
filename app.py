@@ -1067,7 +1067,6 @@ def pagina_usuarios():
 
 def dashboard_principal():
     """Dashboard principal"""
-    aplicar_css_tabela()  # ← ADICIONE ESTA LINHA
     usuario_info = st.session_state.usuario_info
     
     # Cabeçalho
