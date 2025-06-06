@@ -1298,56 +1298,36 @@ def dashboard_principal():
     st.subheader(titulo_tabela)
     
     if not df_filtrado.empty:
-        styled_df = df_filtrado.style.apply(colorir_linha, axis=1)
-        # Tabela principal
-        titulo_tabela = f"📋 Lista de Trackings ({len(df_filtrado)} registros)" if usuario_info["tipo"] == "admin" else f"📋 Seus Trackings ({len(df_filtrado)} registros)"
-        st.subheader(titulo_tabela)
+        # Criar DataFrame com emojis para melhor visualização mobile
+        df_display = df_filtrado.copy()
         
-        if not df_filtrado.empty:
-            # SOLUÇÃO ALTERNATIVA: Usar st.table ao invés de st.dataframe no mobile
-            import streamlit as st
-            
-            # Detectar se é mobile (aproximação)
-            user_agent = st.get_option("browser.gatherUsageStats")
-            
-            # CSS inline para forçar cor preta
-            st.markdown("""
-            <style>
-            div[data-testid="stDataFrame"] table tbody tr td {
-                color: #000000 !important;
-                background-color: #ffffff !important;
-            }
-            div[data-testid="stDataFrame"] table thead tr th {
-                color: #000000 !important;
-                background-color: #f0f0f0 !important;
-            }
-            .dataframe td {
-                color: #000000 !important;
-            }
-            </style>
-            """, unsafe_allow_html=True)
-            
-            # Criar DataFrame com cores aplicadas manualmente
-            df_display = df_filtrado.copy()
-            
-            # Aplicar cores como texto ao invés de CSS
-            for idx, row in df_display.iterrows():
-                if row['CANAL RFB'] == 'VERDE':
-                    # Adicionar emoji para identificar visualmente
-                    df_display.loc[idx, 'CANAL RFB'] = '🟢 VERDE'
-                elif row['CANAL RFB'] == 'VERMELHO':
-                    df_display.loc[idx, 'CANAL RFB'] = '🔴 VERMELHO'
-                elif row['CANAL RFB'] == '':
-                    df_display.loc[idx, 'CANAL RFB'] = '⏳ PENDENTE'
-            
-            # Mostrar tabela SEM style (para evitar conflito CSS)
-            st.dataframe(df_display, use_container_width=True, height=400)
-            
-            # Legenda das cores
-            st.markdown("""
-            **Legenda:** 🟢 Verde = Liberado | 🔴 Vermelho = Inspeção | ⏳ Pendente = Aguardando
-            """)
+        # Aplicar emojis para identificar status
+        for idx, row in df_display.iterrows():
+            if row['CANAL RFB'] == 'VERDE':
+                df_display.loc[idx, 'CANAL RFB'] = '🟢 VERDE'
+            elif row['CANAL RFB'] == 'VERMELHO':
+                df_display.loc[idx, 'CANAL RFB'] = '🔴 VERMELHO'
+            elif row['CANAL RFB'] == '':
+                df_display.loc[idx, 'CANAL RFB'] = '⏳ PENDENTE'
         
+        # Mostrar tabela
+        st.dataframe(df_display, use_container_width=True, height=400)
+        
+        # Legenda
+        st.info("🟢 Verde = Liberado | 🔴 Vermelho = Inspeção | ⏳ Pendente = Aguardando")
+        
+        # Download dos dados
+        csv = df_filtrado.to_csv(index=False)
+        nome_arquivo = f"tracking_todos_{datetime.now().strftime('%Y%m%d')}.csv" if usuario_info["tipo"] == "admin" else f"tracking_{usuario_info['nome'].replace(' ', '_')}_{datetime.now().strftime('%Y%m%d')}.csv"
+        label_download = "💾 Baixar Todos os Dados (CSV)" if usuario_info["tipo"] == "admin" else "💾 Baixar Seus Dados (CSV)"
+        
+        st.download_button(
+            label=label_download,
+            data=csv,
+            file_name=nome_arquivo,
+            mime="text/csv"
+        )
+            
         # Download dos dados
         csv = df_filtrado.to_csv(index=False)
         nome_arquivo = f"tracking_todos_{datetime.now().strftime('%Y%m%d')}.csv" if usuario_info["tipo"] == "admin" else f"tracking_{usuario_info['nome'].replace(' ', '_')}_{datetime.now().strftime('%Y%m%d')}.csv"
