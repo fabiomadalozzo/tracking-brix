@@ -343,75 +343,76 @@ def gerar_senha_temporaria():
     return ''.join(random.choices(string.ascii_lowercase + string.digits, k=8))
 
 def sidebar_backup_system():
-    """Sistema de backup na sidebar"""
+    """Sistema de backup na sidebar - MOBILE FRIENDLY"""
     with st.sidebar:
         st.markdown("---")
-        st.subheader("💾 Sistema de Backup")
+        st.subheader("💾 Dados Atuais")
         
-        # Status dos dados
-        if 'dados_inicializados' in st.session_state:
-            st.success(f"✅ Sistema inicializado em: {st.session_state.dados_inicializados}")
-        
-        if 'dados_restaurados' in st.session_state:
-            st.info(f"📥 Último restore: {st.session_state.dados_restaurados}")
-        
-        # Estatísticas atuais
-        st.write("📊 **Dados Atuais:**")
+        # Estatísticas
         st.write(f"🏢 Clientes: {len(st.session_state.clientes_db)}")
         st.write(f"👥 Usuários: {len(st.session_state.usuarios_db)}")
         st.write(f"📦 Trackings: {len(st.session_state.df_tracking)}")
         
-        # Botão de backup
-        if st.button("📤 Criar Backup", type="primary", help="Baixa arquivo JSON com todos os dados"):
+        # Sistema automático com Dropbox
+        sistema_backup_automatico()
+        
+        # Backup manual simplificado para mobile
+        st.markdown("---")
+        st.subheader("📱 Backup Manual")
+        
+        # Download sempre disponível
+        if st.button("📤 Gerar Backup", help="Cria arquivo para download"):
             backup_json = criar_backup_manual()
             nome_arquivo = f"backup_brix_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
             
             st.download_button(
-                label="⬇️ Baixar Backup",
+                label="⬇️ Baixar JSON",
                 data=backup_json,
                 file_name=nome_arquivo,
                 mime="application/json",
-                help="Salve este arquivo em local seguro!"
+                key="download_backup"
             )
-            st.success("✅ Backup criado! Clique para baixar.")
+            st.success("✅ Backup criado!")
         
-        # Upload de backup
-        st.markdown("### 📥 Restaurar Backup")
-        uploaded_backup = st.file_uploader(
-            "Selecione arquivo de backup (.json)",
-            type=['json'],
-            help="Arquivo criado pela função de backup"
-        )
+        # Restaurar por texto (alternativa mobile)
+        with st.expander("📥 Restaurar por Texto"):
+            st.info("💡 **Para mobile:** Cole o conteúdo do arquivo JSON aqui")
+            
+            json_text = st.text_area(
+                "Cole o JSON do backup:",
+                height=100,
+                placeholder='{"clientes": {...}, "usuarios": {...}, "trackings": [...]}'
+            )
+            
+            if st.button("🔄 Restaurar Dados", type="secondary"):
+                if json_text.strip():
+                    try:
+                        backup_data = json.loads(json_text)
+                        
+                        # Validar estrutura
+                        if not all(key in backup_data for key in ['clientes', 'usuarios', 'trackings']):
+                            st.error("❌ JSON inválido! Verifique a estrutura.")
+                        else:
+                            # Restaurar dados
+                            st.session_state.clientes_db = backup_data['clientes']
+                            st.session_state.usuarios_db = backup_data['usuarios']
+                            st.session_state.df_tracking = pd.DataFrame(backup_data['trackings'])
+                            st.session_state.dados_restaurados = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+                            
+                            st.success("✅ Dados restaurados com sucesso!")
+                            st.rerun()
+                            
+                    except json.JSONDecodeError:
+                        st.error("❌ JSON inválido! Verifique a formatação.")
+                    except Exception as e:
+                        st.error(f"❌ Erro: {str(e)}")
+                else:
+                    st.warning("⚠️ Cole o conteúdo JSON primeiro!")
         
-        if uploaded_backup is not None:
-            try:
-                backup_content = uploaded_backup.read().decode('utf-8')
-                
-                if st.button("🔄 Restaurar Dados", type="secondary"):
-                    sucesso, mensagem = restaurar_backup_manual(backup_content)
-                    if sucesso:
-                        st.success(mensagem)
-                        st.rerun()
-                    else:
-                        st.error(mensagem)
-                
-                # Preview do backup
-                try:
-                    preview_data = json.loads(backup_content)
-                    if 'metadata' in preview_data:
-                        meta = preview_data['metadata']
-                        st.info(f"""
-                        📋 **Preview do Backup:**
-                        - Data: {meta.get('data_backup', 'N/A')}
-                        - Clientes: {meta.get('total_clientes', 0)}
-                        - Usuários: {meta.get('total_usuarios', 0)}
-                        - Trackings: {meta.get('total_trackings', 0)}
-                        """)
-                except:
-                    st.warning("⚠️ Não foi possível ler preview do arquivo")
-                    
-            except Exception as e:
-                st.error(f"❌ Erro ao ler arquivo: {e}")
+        # Status da última operação
+        if 'dados_restaurados' in st.session_state:
+            st.success(f"🕐 Última operação: {st.session_state.dados_restaurados}")
+            
 def sistema_backup_automatico():
     """Sistema de backup automático com Dropbox integrado"""
     with st.sidebar:
