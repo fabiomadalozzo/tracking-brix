@@ -93,6 +93,27 @@ st.markdown("""
             width: 100%;
             padding: 0.75rem;
         }
+        /* FIX: Texto branco invisível no mobile */
+        .stTextInput > div > div > input {
+            color: #000000 !important;
+            background-color: #ffffff !important;
+        }
+        .stSelectbox > div > div > div {
+            color: #000000 !important;
+            background-color: #ffffff !important;
+        }
+    }
+    
+    /* FIX GERAL: Garantir que inputs sejam visíveis */
+    .stTextInput > div > div > input {
+        color: #333333 !important;
+        background-color: white !important;
+        border: 1px solid #cccccc !important;
+    }
+    
+    .stSelectbox > div > div {
+        background-color: white !important;
+        color: #333333 !important;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -788,7 +809,7 @@ def pagina_usuarios():
             st.metric("👤 Clientes", clientes_usuarios)
 
 def tela_login():
-    """Tela de login limpa - SÓ FIX MOBILE"""
+    """Tela de login limpa - COM FIX DE VISIBILIDADE"""
     st.markdown("""
     <div class="main-header">
         <h1>🚢 BRIX LOGÍSTICA</h1>
@@ -802,8 +823,21 @@ def tela_login():
     st.markdown("### 🔐 Fazer Login")
     
     with st.form("login_form"):
-        usuario = st.text_input("👤 Usuário:", placeholder="Digite seu usuário...")
-        senha = st.text_input("🔑 Senha:", type="password", placeholder="Digite sua senha...")
+        # Usar key para forçar cor correta
+        usuario = st.text_input(
+            "👤 Usuário:", 
+            placeholder="Digite seu usuário...",
+            key="login_user",
+            help="Não diferencia maiúsculas/minúsculas"
+        )
+        senha = st.text_input(
+            "🔑 Senha:", 
+            type="password", 
+            placeholder="Digite sua senha...",
+            key="login_pass",
+            help="Sua senha pessoal"
+        )
+        
         submitted = st.form_submit_button("🚀 Entrar", type="primary")
         
         if submitted:
@@ -847,6 +881,21 @@ def tela_login():
         **⏰ Horário:**  
         Segunda a Sexta: 8h às 18h
         """)
+    
+    # ADICIONAR: Contas para teste (removível depois)
+    if st.checkbox("🧪 Mostrar contas de teste (apenas desenvolvimento)"):
+        st.markdown("---")
+        st.markdown("### 🧪 Contas de Teste")
+        
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.code("admin\nadmin123")
+            st.caption("👑 Administrador")
+        
+        with col2:
+            st.code("empresa_abc\nabc123")
+            st.caption("👤 Cliente")
 
 def dashboard_principal():
     """Dashboard principal - MANTIDO ORIGINAL + mobile fix"""
@@ -1131,7 +1180,7 @@ def dashboard_principal():
             mime="text/csv"
         )
         
-        # Formulário para novo registro (só admin)
+        # Formulário para novo registro (só admin) - RESTAURADO
         if usuario_info["tipo"] == "admin":
             with st.expander("➕ Adicionar Novo Tracking"):
                 if not st.session_state.clientes_db:
@@ -1218,7 +1267,7 @@ def dashboard_principal():
                                 edit_embarque = st.text_input("Embarque Navio", value=registro['EMBARQUE NAVIO'])
                                 edit_saida = st.text_input("Saída Navio", value=registro['SAIDA NAVIO'])
                                 edit_previsao = st.text_input("Previsão Chegada Paranaguá", value=registro['PREVISAO CHEGADA PARANAGUA'])
-
+                            
                             with col2:
                                 edit_chegada = st.text_input("Chegada Paranaguá", value=registro['CHEGADA PARANAGUA'])
                                 edit_canal = st.selectbox("Canal RFB", ['', 'VERDE', 'VERMELHO'], 
