@@ -1362,7 +1362,7 @@ def dashboard_principal():
                 use_container_width=True, 
                 height=400,
                 hide_index=True
-            ))
+            )
 
         # Legenda
         st.info("🟢 Verde = Liberado | 🔴 Vermelho = Inspeção | ⏳ Pendente = Aguardando")
