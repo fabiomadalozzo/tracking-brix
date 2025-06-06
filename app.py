@@ -1288,11 +1288,111 @@ def dashboard_principal():
             elif row['CANAL RFB'] == '':
                 df_display.loc[idx, 'CANAL RFB'] = '⏳ PENDENTE'
         
-        # Mostrar tabela com visualização forçada
+        # Mostrar dados - Versão Mobile-First
         st.markdown("### 📊 Dados dos Trackings:")
-        
-        # Criar tabela manual em HTML para garantir visibilidade
-        html_table = "<div style='overflow-x: auto;'><table style='width: 100%; border-collapse: collapse; font-size: 14px;'>"
+
+        # OPÇÃO 1: Cards (recomendado para mobile)
+        st.markdown("#### 📱 Visualização em Cards:")
+        for idx, row in df_display.iterrows():
+            # Definir cores que funcionam em tema claro e escuro
+            if 'VERDE' in str(row['CANAL RFB']):
+                card_color = "#e8f5e8"  # Verde bem claro
+                border_color = "#28a745"
+                status_emoji = "🟢"
+                text_color = "#000000"
+            elif 'VERMELHO' in str(row['CANAL RFB']):
+                card_color = "#f8e8e8"  # Vermelho bem claro
+                border_color = "#dc3545"
+                status_emoji = "🔴"
+                text_color = "#000000"
+            else:
+                card_color = "#fff8e1"  # Amarelo bem claro
+                border_color = "#ffc107"
+                status_emoji = "⏳"
+                text_color = "#000000"
+            
+            st.markdown(f"""
+            <div style='
+                background-color: {card_color}; 
+                border: 2px solid {border_color}; 
+                border-radius: 10px;
+                padding: 15px; 
+                margin: 15px 0; 
+                box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                color: {text_color};
+                font-family: Arial, sans-serif;
+            '>
+                <div style='display: flex; align-items: center; margin-bottom: 10px;'>
+                    <span style='font-size: 24px; margin-right: 10px;'>{status_emoji}</span>
+                    <h3 style='color: {text_color}; margin: 0; font-size: 18px; font-weight: bold;'>
+                        📦 {row['CONTAINER']}
+                    </h3>
+                </div>
+                
+                <div style='color: {text_color}; font-size: 14px; line-height: 1.5;'>
+                    <p style='margin: 8px 0; padding: 5px; background-color: rgba(255,255,255,0.3); border-radius: 5px;'>
+                        <strong>🏢 Cliente:</strong> {row['CLIENTE']}
+                    </p>
+                    <p style='margin: 8px 0; padding: 5px; background-color: rgba(255,255,255,0.3); border-radius: 5px;'>
+                        <strong>📊 Status:</strong> {row['CANAL RFB']}
+                    </p>
+                    <p style='margin: 8px 0; padding: 5px; background-color: rgba(255,255,255,0.3); border-radius: 5px;'>
+                        <strong>📅 Carregamento:</strong> {row['CARREGAMENTO']}
+                    </p>
+                    <p style='margin: 8px 0; padding: 5px; background-color: rgba(255,255,255,0.3); border-radius: 5px;'>
+                        <strong>🚢 Embarque:</strong> {row['EMBARQUE NAVIO']}
+                    </p>
+                    <p style='margin: 8px 0; padding: 5px; background-color: rgba(255,255,255,0.3); border-radius: 5px;'>
+                        <strong>📍 Previsão Paranaguá:</strong> {row['PREVISAO CHEGADA PARANAGUA']}
+                    </p>
+                    <p style='margin: 8px 0; padding: 5px; background-color: rgba(255,255,255,0.3); border-radius: 5px;'>
+                        <strong>✅ Chegada Paranaguá:</strong> {row['CHEGADA PARANAGUA']}
+                    </p>
+                    <p style='margin: 8px 0; padding: 5px; background-color: rgba(255,255,255,0.3); border-radius: 5px;'>
+                        <strong>🔓 Liberação:</strong> {row['LIBERAÇAO PARANAGUA']}
+                    </p>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+
+        # OPÇÃO 2: Tabela simples (para quem prefere)
+        if st.checkbox("📊 Ver como Tabela Tradicional"):
+            # Criar tabela com contraste alto
+            html_table = """
+            <div style='overflow-x: auto; background-color: #ffffff; padding: 10px; border-radius: 5px;'>
+            <table style='width: 100%; border-collapse: collapse; font-size: 12px; background-color: #ffffff;'>
+            <thead>
+            <tr style='background-color: #f8f9fa;'>
+            """
+            
+            for col in df_display.columns:
+                html_table += f"<th style='border: 2px solid #000000; padding: 8px; text-align: left; color: #000000; font-weight: bold; background-color: #f8f9fa;'>{col}</th>"
+            
+            html_table += "</tr></thead><tbody>"
+            
+            for idx, row in df_display.iterrows():
+                html_table += "<tr>"
+                for col in df_display.columns:
+                    valor = str(row[col]) if pd.notna(row[col]) else ""
+                    
+                    if col == 'CANAL RFB':
+                        if 'VERDE' in valor:
+                            bg_color = "#d4edda"
+                        elif 'VERMELHO' in valor:
+                            bg_color = "#f8d7da"
+                        else:
+                            bg_color = "#fff3cd"
+                    else:
+                        bg_color = "#ffffff"
+                    
+                    html_table += f"<td style='border: 1px solid #000000; padding: 6px; background-color: {bg_color}; color: #000000; font-weight: 500;'>{valor}</td>"
+                html_table += "</tr>"
+            
+            html_table += "</tbody></table></div>"
+            st.markdown(html_table, unsafe_allow_html=True)
+
+        # Legenda
+        st.info("🟢 Verde = Liberado | 🔴 Vermelho = Inspeção | ⏳ Pendente = Aguardando")
         
         # Cabeçalho da tabela
         html_table += """
