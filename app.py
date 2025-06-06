@@ -1301,62 +1301,58 @@ def dashboard_principal():
             elif row['CANAL RFB'] == '':
                 df_display.loc[idx, 'CANAL RFB'] = '⏳ PENDENTE'
         
-        # Mostrar dados - Versão Mobile-First
+        # Mostrar dados - Versão Simples e Robusta
         st.markdown("### 📊 Dados dos Trackings:")
 
-        # OPÇÃO 1: Cards (recomendado para mobile) - VERSÃO CORRIGIDA
+        # Cards principais (sempre visíveis)
         for idx, row in df_display.iterrows():
-            # Definir cores e emoji baseado no status
+            # Definir cor baseada no status
             if 'VERDE' in str(row['CANAL RFB']):
-                card_color = "#e8f5e8"
-                border_color = "#28a745"
-                status_emoji = "🟢"
+                cor_fundo = "#d5f4e6"
+                emoji_status = "🟢"
             elif 'VERMELHO' in str(row['CANAL RFB']):
-                card_color = "#f8e8e8"
-                border_color = "#dc3545"
-                status_emoji = "🔴"
+                cor_fundo = "#fadbd8"
+                emoji_status = "🔴"
             else:
-                card_color = "#fff8e1"
-                border_color = "#ffc107"
-                status_emoji = "⏳"
+                cor_fundo = "#fff3cd"
+                emoji_status = "⏳"
             
-            # Usar container do Streamlit ao invés de HTML puro
+            # Card usando apenas Streamlit (sem HTML complexo)
             with st.container():
                 st.markdown(f"""
-                <div style='
-                    background-color: {card_color}; 
-                    border: 2px solid {border_color}; 
-                    border-radius: 10px;
-                    padding: 15px; 
-                    margin: 15px 0; 
-                    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-                '>
-                    <h3 style='color: #000000; margin: 0 0 15px 0;'>
-                        {status_emoji} 📦 {row['CONTAINER']} - {row['CLIENTE']}
-                    </h3>
+                <div style='background-color: {cor_fundo}; padding: 15px; border-radius: 10px; margin: 10px 0; border-left: 5px solid #333;'>
+                    <h4 style='color: #000; margin: 0;'>{emoji_status} {row['CONTAINER']} - {row['CLIENTE']}</h4>
                 </div>
                 """, unsafe_allow_html=True)
                 
-                # Usar colunas do Streamlit para os dados
-                col1, col2 = st.columns(2)
+                # Dados em colunas (mais seguro que HTML)
+                col1, col2, col3 = st.columns(3)
                 
                 with col1:
-                    st.write(f"**📊 Status:** {row['CANAL RFB']}")
-                    st.write(f"**📅 Carregamento:** {row['CARREGAMENTO']}")
-                    st.write(f"**🚢 Embarque:** {row['EMBARQUE NAVIO']}")
-                    st.write(f"**📍 Previsão Paranaguá:** {row['PREVISAO CHEGADA PARANAGUA']}")
+                    st.write(f"**Status:** {row['CANAL RFB']}")
+                    st.write(f"**Carregamento:** {row['CARREGAMENTO']}")
+                    st.write(f"**Embarque:** {row['EMBARQUE NAVIO']}")
                 
                 with col2:
-                    st.write(f"**✅ Chegada Paranaguá:** {row['CHEGADA PARANAGUA']}")
-                    st.write(f"**🔓 Liberação:** {row['LIBERAÇAO PARANAGUA']}")
-                    st.write(f"**🚛 Chegada Ciudad del Este:** {row['CHEGADA CIUDAD DEL ESTE PY']}")
-                    st.write(f"**📦 Descarregamento:** {row['DESCARREGAMENTO']}")
+                    st.write(f"**Saída:** {row['SAIDA NAVIO']}")
+                    st.write(f"**Previsão:** {row['PREVISAO CHEGADA PARANAGUA']}")
+                    st.write(f"**Chegada:** {row['CHEGADA PARANAGUA']}")
                 
-                st.markdown("---")
+                with col3:
+                    st.write(f"**Liberação:** {row['LIBERAÇAO PARANAGUA']}")
+                    st.write(f"**Ciudad del Este:** {row['CHEGADA CIUDAD DEL ESTE PY']}")
+                    st.write(f"**Descarregamento:** {row['DESCARREGAMENTO']}")
+                
+                st.divider()  # Linha separadora
 
-        # OPÇÃO 2: Tabela simples (para quem prefere)
-        if st.checkbox("📊 Ver como Tabela Tradicional"):
-            st.dataframe(df_display, use_container_width=True, height=400)
+        # Tabela opcional (versão segura)
+        if st.checkbox("📊 Ver como Tabela"):
+            st.dataframe(
+                df_display, 
+                use_container_width=True, 
+                height=400,
+                hide_index=True
+            )
 
         # Legenda
         st.info("🟢 Verde = Liberado | 🔴 Vermelho = Inspeção | ⏳ Pendente = Aguardando")
