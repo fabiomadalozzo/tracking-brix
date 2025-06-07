@@ -18,7 +18,7 @@ from pathlib import Path
 
 # 🔐 CONFIGURAÇÃO DO TOKEN GITHUB (APENAS VOCÊ PRECISA ALTERAR)
 # Cole seu token GitHub aqui - será usado automaticamente em qualquer computador
-GITHUB_TOKEN_CONFIGURADO = "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"  # ← Cole seu token permanente aqui
+GITHUB_TOKEN_CONFIGURADO = ""  # ← Cole seu token permanente aqui
 
 # Configuração da página
 st.set_page_config(
