@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Sistema de Tracking BRIX - Versão com Persistência REAL Corrigida
-SOLUÇÃO: Dados persistem durante a sessão + Sistema de Backup Manual
+Sistema de Tracking BRIX - Versão com Token GitHub Persistente
+NOVA FUNCIONALIDADE: Token salvo permanentemente no computador
 Escritório de contabilidade - Brasil
 """
 
@@ -13,6 +13,8 @@ import plotly.graph_objects as go
 from datetime import datetime, timedelta
 import json
 import base64
+import os
+from pathlib import Path
 
 # Configuração da página
 st.set_page_config(
@@ -177,6 +179,76 @@ st.markdown("""
     }
 </style>
 """, unsafe_allow_html=True)
+
+# NOVO: Funções para gerenciar token persistente
+def obter_diretorio_config():
+    """Obtém o diretório de configuração do BRIX"""
+    home_dir = Path.home()
+    config_dir = home_dir / ".brix_config"
+    config_dir.mkdir(exist_ok=True)
+    return config_dir
+
+def salvar_token_persistente(token):
+    """Salva o token GitHub de forma permanente"""
+    try:
+        config_dir = obter_diretorio_config()
+        token_file = config_dir / "github_token.txt"
+        
+        # Criptografia simples para segurança básica
+        token_encoded = base64.b64encode(token.encode()).decode()
+        
+        with open(token_file, 'w') as f:
+            f.write(token_encoded)
+        
+        return True
+    except Exception as e:
+        st.error(f"❌ Erro ao salvar token: {str(e)}")
+        return False
+
+def carregar_token_persistente():
+    """Carrega o token GitHub salvo"""
+    try:
+        config_dir = obter_diretorio_config()
+        token_file = config_dir / "github_token.txt"
+        
+        if token_file.exists():
+            with open(token_file, 'r') as f:
+                token_encoded = f.read().strip()
+            
+            if token_encoded:
+                token = base64.b64decode(token_encoded.encode()).decode()
+                return token
+        
+        return None
+    except Exception:
+        return None
+
+def remover_token_persistente():
+    """Remove o token salvo"""
+    try:
+        config_dir = obter_diretorio_config()
+        token_file = config_dir / "github_token.txt"
+        
+        if token_file.exists():
+            token_file.unlink()
+        
+        return True
+    except Exception:
+        return False
+
+def testar_token_github(token):
+    """Testa se o token GitHub é válido"""
+    try:
+        import requests
+        test_response = requests.get(
+            "https://api.github.com/user", 
+            headers={'Authorization': f'token {token}'},
+            timeout=5
+        )
+        return test_response.status_code == 200
+    except Exception:
+        return False
+
 # Dados da empresa
 DADOS_EMPRESA = {
     'nome': 'BRIX LOGÍSTICA',
@@ -197,6 +269,13 @@ COLUNAS = [
 
 def inicializar_sistema():
     """Inicializa o sistema com dados padrão se necessário"""
+    
+    # NOVO: Carregar token automaticamente
+    if 'github_token' not in st.session_state:
+        token_salvo = carregar_token_persistente()
+        if token_salvo and testar_token_github(token_salvo):
+            st.session_state.github_token = token_salvo
+            st.session_state.github_token_configurado = True
     
     # Inicializar dados básicos se não existirem
     if 'sistema_inicializado' not in st.session_state:
@@ -397,7 +476,7 @@ def gerar_senha_temporaria():
     return ''.join(random.choices(string.ascii_lowercase + string.digits, k=8))
 
 def sidebar_backup_system():
-    """Sistema de backup na sidebar - APENAS GITHUB SEGURO"""
+    """Sistema de backup na sidebar - VERSÃO COM TOKEN PERSISTENTE"""
     with st.sidebar:
         st.markdown("---")
         st.subheader("💾 Sistema BRIX")
@@ -407,7 +486,17 @@ def sidebar_backup_system():
         st.write(f"👥 Usuários: {len(st.session_state.usuarios_db)}")
         st.write(f"📦 Trackings: {len(st.session_state.df_tracking)}")
         
-        # CONFIGURAÇÃO SEGURA DO TOKEN (UMA VEZ SÓ)
+        # MODIFICADO: Verificar token persistente primeiro
+        if 'github_token_configurado' not in st.session_state:
+            # Tentar carregar token salvo
+            token_salvo = carregar_token_persistente()
+            if token_salvo and testar_token_github(token_salvo):
+                st.session_state.github_token = token_salvo
+                st.session_state.github_token_configurado = True
+                st.success("🔐 **Token carregado automaticamente!**")
+                st.rerun()
+        
+        # CONFIGURAÇÃO INICIAL - Só aparece se não tem token
         if 'github_token_configurado' not in st.session_state:
             st.warning("🔐 **Configuração Inicial Necessária**")
             
@@ -428,30 +517,27 @@ def sidebar_backup_system():
                     help="Cole seu token GitHub aqui"
                 )
                 
-                if st.button("💾 Configurar") and token_input:
-                    try:
-                        import requests
-                        test_response = requests.get(
-                            "https://api.github.com/user", 
-                            headers={'Authorization': f'token {token_input}'},
-                            timeout=5
-                        )
-                        
-                        if test_response.status_code == 200:
-                            st.session_state.github_token = token_input
-                            st.session_state.github_token_configurado = True
-                            st.success("✅ Configurado! Recarregando...")
-                            st.rerun()
+                if st.button("💾 Configurar e Salvar") and token_input:
+                    with st.spinner("🔍 Testando token..."):
+                        if testar_token_github(token_input):
+                            # NOVO: Salvar token permanentemente
+                            if salvar_token_persistente(token_input):
+                                st.session_state.github_token = token_input
+                                st.session_state.github_token_configurado = True
+                                st.success("✅ Token configurado e salvo permanentemente!")
+                                st.info("🎉 **Próximas vezes:** Token será carregado automaticamente!")
+                                st.rerun()
+                            else:
+                                st.error("❌ Erro ao salvar token!")
                         else:
                             st.error("❌ Token inválido!")
-                    except:
-                        st.error("❌ Erro de conexão!")
             
             return
         
         # SISTEMA CONFIGURADO - AUTOMAÇÃO ATIVA
         st.success("🔐 **GitHub:** Configurado")
-        st.success("🤖 **Automação:** Ativa")
+        st.success("🤖 **Automação:** Ativa") 
+        st.success("💾 **Token:** Salvo permanentemente")
         
         # Token configurado - executar automação
         executar_sistema_github()
@@ -489,12 +575,26 @@ def sidebar_backup_system():
         if 'dados_restaurados' in st.session_state:
             st.write(f"🕐 Última sync: {st.session_state.dados_restaurados}")
         
-        # Reconfiguração
-        if st.button("🔧 Reconfigurar"):
-            del st.session_state.github_token_configurado
-            if 'github_token' in st.session_state:
-                del st.session_state.github_token
-            st.rerun()
+        # NOVO: Opção para reconfigurar (com aviso)
+        st.markdown("---")
+        with st.expander("🔧 Opções Avançadas"):
+            st.markdown("**⚠️ Cuidado com estas opções:**")
+            
+            if st.button("🔄 Reconfigurar Token", help="Apagar token salvo e reconfigurar"):
+                if remover_token_persistente():
+                    if 'github_token_configurado' in st.session_state:
+                        del st.session_state.github_token_configurado
+                    if 'github_token' in st.session_state:
+                        del st.session_state.github_token
+                    st.success("🗑️ Token removido! Página será recarregada...")
+                    st.rerun()
+                else:
+                    st.error("❌ Erro ao remover token!")
+            
+            st.markdown("---")
+            st.markdown("**📍 Local do Token:**")
+            config_dir = obter_diretorio_config()
+            st.code(str(config_dir))
 
 def executar_sistema_github():
     """Executa sincronização e backup automático do GitHub"""
@@ -568,7 +668,7 @@ def executar_backup_github():
             'trackings': st.session_state.df_tracking.to_dict('records'),
             'metadata': {
                 'data_backup': datetime.now().strftime("%d/%m/%Y %H:%M:%S"),
-                'versao': '2.1-GITHUB-SEGURO'
+                'versao': '2.2-TOKEN-PERSISTENTE'
             }
         }
         
@@ -603,139 +703,7 @@ def executar_backup_github():
     except Exception as e:
         st.error(f"❌ Erro: {str(e)}")
         return False
-            
-def sistema_backup_automatico_admin():
-    """Sistema de backup automático APENAS PARA ADMIN - VERSÃO SEGURA"""
-    
-    st.markdown("---")
-    st.subheader("⚙️ Backup Automático (Admin)")
-    
-    # Usar token seguro já configurado
-    GITHUB_TOKEN = st.session_state.github_token
-    GITHUB_REPO = "fabiomadalozzo/brix-backup"
-    GITHUB_FILE = "backup_brix.json"
-    GITHUB_API_URL = f"https://api.github.com/repos/{GITHUB_REPO}/contents/{GITHUB_FILE}"
-    
-    # FUNÇÃO DE SALVAMENTO AUTOMÁTICO
-    def salvar_automaticamente():
-        """Salva dados automaticamente no GitHub de forma segura"""
-        try:
-            import requests
-            import base64
-            
-            backup_data = {
-                'clientes': st.session_state.clientes_db,
-                'usuarios': st.session_state.usuarios_db,
-                'trackings': st.session_state.df_tracking.to_dict('records'),
-                'metadata': {
-                    'data_backup': datetime.now().strftime("%d/%m/%Y %H:%M:%S"),
-                    'versao': '2.1-SEGURA',
-                    'total_clientes': len(st.session_state.clientes_db),
-                    'total_usuarios': len(st.session_state.usuarios_db),
-                    'total_trackings': len(st.session_state.df_tracking)
-                }
-            }
-            
-            json_content = json.dumps(backup_data, ensure_ascii=False, indent=2)
-            content_base64 = base64.b64encode(json_content.encode('utf-8')).decode('utf-8')
-            
-            headers = {
-                'Authorization': f'token {GITHUB_TOKEN}',
-                'Accept': 'application/vnd.github.v3+json'
-            }
-            
-            # Pegar SHA do arquivo atual
-            get_response = requests.get(GITHUB_API_URL, headers=headers)
-            
-            github_data = {
-                'message': f'[SEGURO] Backup automático BRIX - {datetime.now().strftime("%d/%m/%Y %H:%M:%S")}',
-                'content': content_base64
-            }
-            
-            if get_response.status_code == 200:
-                github_data['sha'] = get_response.json()['sha']
-            
-            response = requests.put(GITHUB_API_URL, json=github_data, headers=headers, timeout=15)
-            
-            if response.status_code in [200, 201]:
-                st.session_state.ultimo_backup = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
-                return True
-            return False
-            
-        except Exception as e:
-            return False
-    
-    # DETECÇÃO DE MUDANÇAS E BACKUP AUTOMÁTICO
-    dados_atuais = {
-        'clientes': len(st.session_state.clientes_db),
-        'usuarios': len(st.session_state.usuarios_db),
-        'trackings': len(st.session_state.df_tracking),
-        'hash': str(hash(str(st.session_state.clientes_db) + str(st.session_state.usuarios_db)))
-    }
-    
-    if 'dados_anteriores' not in st.session_state:
-        st.session_state.dados_anteriores = dados_atuais
-    
-    # Se dados mudaram, salvar automaticamente
-    if dados_atuais != st.session_state.dados_anteriores:
-        with st.spinner("💾 Realizando backup automático seguro..."):
-            if salvar_automaticamente():
-                st.success("✅ Backup automático realizado com sucesso!")
-            else:
-                st.error("❌ Erro no backup automático")
-        
-        st.session_state.dados_anteriores = dados_atuais
-    
-    # STATUS DO SISTEMA ADMIN
-    st.success("🤖 **Backup Automático:** ATIVO")
-    st.success("🔐 **Segurança:** Token protegido")
-    st.success("📊 **Monitoramento:** Detecta mudanças automaticamente")
-    
-    if 'ultimo_backup' in st.session_state:
-        st.info(f"💾 **Último backup:** {st.session_state.ultimo_backup}")
-    
-    # CONTROLES MANUAIS
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        if st.button("📤 Backup Manual", help="Forçar backup imediato"):
-            with st.spinner("💾 Realizando backup manual..."):
-                if salvar_automaticamente():
-                    st.success("✅ Backup manual concluído!")
-                else:
-                    st.error("❌ Erro no backup manual")
-    
-    with col2:
-        if st.button("🔄 Sincronizar", help="Forçar sincronização"):
-            st.session_state.backup_sincronizado = False
-            st.rerun()
-    
-    # INFORMAÇÕES DE SEGURANÇA
-    with st.expander("🔒 Informações de Segurança"):
-        st.markdown("""
-        **✅ SISTEMA TOTALMENTE SEGURO:**
-        
-        **🔐 Token Protegido:**
-        - Não aparece no código fonte
-        - Salvo apenas na sua sessão
-        - Testado antes de usar
-        
-        **🤖 Automação Segura:**
-        - Backup automático a cada mudança
-        - Sincronização automática ao abrir
-        - Monitoramento contínuo
-        
-        **📊 Funcionalidades:**
-        - Histórico completo no GitHub
-        - Detecção inteligente de mudanças
-        - Controles manuais quando necessário
-        
-        **🌐 Acesso Multi-Dispositivo:**
-        - Funciona em qualquer computador
-        - Dados sempre sincronizados
-        - Configuração única por sessão
-        """)
-        
+
 def tela_login():
     """Tela de login - CORRIGIDA para mobile"""
     st.markdown("""
@@ -815,7 +783,14 @@ def tela_login():
         - Horário: Seg-Sex 8h-18h
         """)
     
-            
+    with col2:
+        st.markdown("""
+        **🧪 Contas de Teste:**
+        - **Admin:** admin / admin123
+        - **Cliente ABC:** empresa_abc / abc123
+        - **Cliente XYZ:** comercial_xyz / xyz123
+        """)
+
 def pagina_clientes():
     """Página para gerenciar clientes"""
     st.header("🏢 Gerenciamento de Clientes")
