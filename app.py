@@ -180,7 +180,20 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# NOVO: Funções para gerenciar token persistente
+# 🔐 CONFIGURAÇÃO DO TOKEN GITHUB (APENAS VOCÊ PRECISA ALTERAR)
+# Cole seu token GitHub aqui - será usado automaticamente em qualquer computador
+GITHUB_TOKEN_CONFIGURADO = "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"  # Cole seu token aqui: ghp_xxxxxxxxxx
+
+# FUNÇÕES PARA GERENCIAR TOKEN
+def obter_token_github():
+    """Obtém o token GitHub - primeiro tenta o configurado, depois o salvo localmente"""
+    # 1. Usar token configurado no código (prioritário)
+    if GITHUB_TOKEN_CONFIGURADO and GITHUB_TOKEN_CONFIGURADO.startswith('ghp_'):
+        return GITHUB_TOKEN_CONFIGURADO
+    
+    # 2. Tentar carregar token salvo localmente (fallback)
+    return carregar_token_persistente()
+
 def obter_diretorio_config():
     """Obtém o diretório de configuração do BRIX"""
     home_dir = Path.home()
@@ -270,11 +283,11 @@ COLUNAS = [
 def inicializar_sistema():
     """Inicializa o sistema com dados padrão se necessário"""
     
-    # NOVO: Carregar token automaticamente
+    # NOVO: Configurar token automaticamente
     if 'github_token' not in st.session_state:
-        token_salvo = carregar_token_persistente()
-        if token_salvo and testar_token_github(token_salvo):
-            st.session_state.github_token = token_salvo
+        token_configurado = obter_token_github()
+        if token_configurado and testar_token_github(token_configurado):
+            st.session_state.github_token = token_configurado
             st.session_state.github_token_configurado = True
     
     # Inicializar dados básicos se não existirem
@@ -476,7 +489,7 @@ def gerar_senha_temporaria():
     return ''.join(random.choices(string.ascii_lowercase + string.digits, k=8))
 
 def sidebar_backup_system():
-    """Sistema de backup na sidebar - VERSÃO COM TOKEN PERSISTENTE"""
+    """Sistema de backup na sidebar - VERSÃO AUTOMÁTICA PARA CLIENTES"""
     with st.sidebar:
         st.markdown("---")
         st.subheader("💾 Sistema BRIX")
@@ -486,58 +499,70 @@ def sidebar_backup_system():
         st.write(f"👥 Usuários: {len(st.session_state.usuarios_db)}")
         st.write(f"📦 Trackings: {len(st.session_state.df_tracking)}")
         
-        # MODIFICADO: Verificar token persistente primeiro
+        # MODIFICADO: Sistema automático
         if 'github_token_configurado' not in st.session_state:
-            # Tentar carregar token salvo
-            token_salvo = carregar_token_persistente()
-            if token_salvo and testar_token_github(token_salvo):
-                st.session_state.github_token = token_salvo
+            # Tentar configurar automaticamente
+            token_configurado = obter_token_github()
+            if token_configurado and testar_token_github(token_configurado):
+                st.session_state.github_token = token_configurado
                 st.session_state.github_token_configurado = True
-                st.success("🔐 **Token carregado automaticamente!**")
+                st.success("🔐 **Sistema configurado automaticamente!**")
                 st.rerun()
         
-        # CONFIGURAÇÃO INICIAL - Só aparece se não tem token
+        # Se ainda não conseguiu configurar automaticamente
         if 'github_token_configurado' not in st.session_state:
-            st.warning("🔐 **Configuração Inicial Necessária**")
-            
-            with st.expander("⚙️ Configurar GitHub (Uma vez só)", expanded=True):
+            # Verificar se é porque token no código não foi configurado
+            if not GITHUB_TOKEN_CONFIGURADO:
+                st.info("🔐 **Para Desenvolvedores:**")
                 st.markdown("""
-                **🔧 Configuração rápida:**
+                **🛠️ Configuração necessária no código:**
+                
+                1. Cole seu token GitHub na variável:
+                ```python
+                GITHUB_TOKEN_CONFIGURADO = "ghp_seu_token_aqui"
+                ```
+                
+                2. Isso fará o sistema funcionar automaticamente em qualquer computador!
+                """)
+            else:
+                st.error("🔐 **Token configurado mas inválido**")
+                st.markdown("Verifique se o token GitHub está correto no código.")
+            
+            # Opção manual como fallback
+            with st.expander("⚙️ Configuração Manual (Emergência)", expanded=False):
+                st.markdown("""
+                **🔧 Se precisar configurar manualmente:**
                 1. Acesse: https://github.com/settings/tokens
-                2. Clique "Generate new token (classic)"
-                3. Nome: "BRIX Backup Seguro"
+                2. Clique "Generate new token (classic)"  
+                3. Nome: "BRIX Backup"
                 4. Marque: ✅ repo
-                5. Cole o token aqui:
+                5. Cole o token abaixo:
                 """)
                 
                 token_input = st.text_input(
                     "🔑 Token GitHub:", 
                     type="password", 
-                    placeholder="ghp_seu_novo_token_aqui...",
-                    help="Cole seu token GitHub aqui"
+                    placeholder="ghp_emergencia_token...",
+                    help="Só use se necessário"
                 )
                 
-                if st.button("💾 Configurar e Salvar") and token_input:
+                if st.button("💾 Usar Token Manual") and token_input:
                     with st.spinner("🔍 Testando token..."):
                         if testar_token_github(token_input):
-                            # NOVO: Salvar token permanentemente
-                            if salvar_token_persistente(token_input):
-                                st.session_state.github_token = token_input
-                                st.session_state.github_token_configurado = True
-                                st.success("✅ Token configurado e salvo permanentemente!")
-                                st.info("🎉 **Próximas vezes:** Token será carregado automaticamente!")
-                                st.rerun()
-                            else:
-                                st.error("❌ Erro ao salvar token!")
+                            salvar_token_persistente(token_input)
+                            st.session_state.github_token = token_input
+                            st.session_state.github_token_configurado = True
+                            st.success("✅ Configurado manualmente!")
+                            st.rerun()
                         else:
                             st.error("❌ Token inválido!")
             
             return
         
-        # SISTEMA CONFIGURADO - AUTOMAÇÃO ATIVA
-        st.success("🔐 **GitHub:** Configurado")
-        st.success("🤖 **Automação:** Ativa") 
-        st.success("💾 **Token:** Salvo permanentemente")
+        # SISTEMA CONFIGURADO E FUNCIONANDO
+        st.success("🔐 **GitHub:** Configurado automaticamente")
+        st.success("🤖 **Backup:** Sincronização ativa") 
+        st.success("💾 **Multi-PC:** Funciona em qualquer computador")
         
         # Token configurado - executar automação
         executar_sistema_github()
@@ -561,40 +586,38 @@ def sidebar_backup_system():
             # Status do último backup
             if 'ultimo_backup' in st.session_state:
                 st.info(f"💾 Último backup: {st.session_state.ultimo_backup}")
+            
+            # Informações de configuração (só para admin)
+            with st.expander("🔧 Informações do Sistema"):
+                st.markdown(f"""
+                **🔐 Status da Configuração:**
+                - **Token no código:** {'✅ Configurado' if GITHUB_TOKEN_CONFIGURADO else '❌ Não configurado'}
+                - **Funcionamento:** {'✅ Automático' if GITHUB_TOKEN_CONFIGURADO else '⚠️ Manual necessário'}
+                - **Multi-PC:** {'✅ Sim' if GITHUB_TOKEN_CONFIGURADO else '❌ Não'}
+                """)
+                
+                if st.button("🔄 Reconfigurar Sistema"):
+                    if 'github_token_configurado' in st.session_state:
+                        del st.session_state.github_token_configurado
+                    if 'github_token' in st.session_state:
+                        del st.session_state.github_token
+                    st.rerun()
         
         else:
-            # PARA CLIENTES
+            # PARA CLIENTES - INTERFACE LIMPA
             st.markdown("---")
-            st.info("📊 Seus dados estão sempre atualizados")
+            st.success("📊 Sistema funcionando automaticamente")
+            st.info("🔄 Dados sempre sincronizados")
             
             if st.button("🔄 Atualizar Dados"):
                 st.session_state.backup_sincronizado = False
                 st.rerun()
         
-        # STATUS
+        # STATUS GERAL
         if 'dados_restaurados' in st.session_state:
-            st.write(f"🕐 Última sync: {st.session_state.dados_restaurados}")
-        
-        # NOVO: Opção para reconfigurar (com aviso)
-        st.markdown("---")
-        with st.expander("🔧 Opções Avançadas"):
-            st.markdown("**⚠️ Cuidado com estas opções:**")
-            
-            if st.button("🔄 Reconfigurar Token", help="Apagar token salvo e reconfigurar"):
-                if remover_token_persistente():
-                    if 'github_token_configurado' in st.session_state:
-                        del st.session_state.github_token_configurado
-                    if 'github_token' in st.session_state:
-                        del st.session_state.github_token
-                    st.success("🗑️ Token removido! Página será recarregada...")
-                    st.rerun()
-                else:
-                    st.error("❌ Erro ao remover token!")
-            
-            st.markdown("---")
-            st.markdown("**📍 Local do Token:**")
-            config_dir = obter_diretorio_config()
-            st.code(str(config_dir))
+            st.write(f"🕐 Última sincronização: {st.session_state.dados_restaurados}")
+        else:
+            st.write("🕐 Carregando dados...")
 
 def executar_sistema_github():
     """Executa sincronização e backup automático do GitHub"""
@@ -606,7 +629,7 @@ def executar_sistema_github():
     # SINCRONIZAÇÃO AUTOMÁTICA (primeira vez)
     if 'backup_sincronizado' not in st.session_state:
         try:
-            with st.spinner("🔄 Sincronizando..."):
+            with st.spinner("🔄 Sincronizando dados..."):
                 import requests
                 import base64
                 
@@ -628,7 +651,7 @@ def executar_sistema_github():
                     st.session_state.df_tracking = pd.DataFrame(backup_data['trackings'])
                     st.session_state.dados_restaurados = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
                     
-                    st.success("✅ Dados sincronizados!")
+                    st.success("✅ Dados sincronizados automaticamente!")
                 
                 st.session_state.backup_sincronizado = True
                 st.rerun()
@@ -637,7 +660,7 @@ def executar_sistema_github():
             st.session_state.backup_sincronizado = True
     
     # BACKUP AUTOMÁTICO (só admin)
-    if st.session_state.usuario_info.get("tipo") == "admin":
+    if st.session_state.usuario_info and st.session_state.usuario_info.get("tipo") == "admin":
         dados_atuais = {
             'clientes': len(st.session_state.clientes_db),
             'usuarios': len(st.session_state.usuarios_db),
@@ -668,7 +691,7 @@ def executar_backup_github():
             'trackings': st.session_state.df_tracking.to_dict('records'),
             'metadata': {
                 'data_backup': datetime.now().strftime("%d/%m/%Y %H:%M:%S"),
-                'versao': '2.2-TOKEN-PERSISTENTE'
+                'versao': '2.3-MULTI-COMPUTADOR-AUTOMATICO'
             }
         }
         
