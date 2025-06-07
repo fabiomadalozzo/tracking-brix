@@ -182,7 +182,7 @@ st.markdown("""
 
 # 🔐 CONFIGURAÇÃO DO TOKEN GITHUB (APENAS VOCÊ PRECISA ALTERAR)
 # Cole seu token GitHub aqui - será usado automaticamente em qualquer computador
-GITHUB_TOKEN_CONFIGURADO = "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"  # Cole seu token aqui: ghp_xxxxxxxxxx
+GITHUB_TOKEN_CONFIGURADO = "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"  # Cole seu token aqui: ghp_xxxxxxxxxx
 
 # FUNÇÕES PARA GERENCIAR TOKEN
 def obter_token_github():
@@ -250,22 +250,16 @@ def remover_token_persistente():
         return False
 
 def testar_token_github(token):
-    """Testa se o token GitHub é válido - VERSÃO COM MAIS DETALHES"""
+    """Testa se o token GitHub é válido"""
     try:
         import requests
         test_response = requests.get(
             "https://api.github.com/user", 
             headers={'Authorization': f'token {token}'},
-            timeout=10
+            timeout=5
         )
-        
-        # DEBUG: Mostrar detalhes da resposta
-        print(f"Status Code: {test_response.status_code}")
-        print(f"Response: {test_response.text[:200]}...")
-        
         return test_response.status_code == 200
-    except Exception as e:
-        print(f"Erro na requisição: {str(e)}")
+    except Exception:
         return False
 
 # Dados da empresa
@@ -635,7 +629,7 @@ def executar_sistema_github():
     # SINCRONIZAÇÃO AUTOMÁTICA (primeira vez)
     if 'backup_sincronizado' not in st.session_state:
         try:
-            with st.spinner("🔄 Sincronizando dados do servidor..."):
+            with st.spinner("🔄 Sincronizando dados..."):
                 import requests
                 import base64
                 
@@ -652,24 +646,17 @@ def executar_sistema_github():
                     content_decoded = base64.b64decode(content_base64).decode('utf-8')
                     backup_data = json.loads(content_decoded)
                     
-                    # SINCRONIZAR DADOS DO GITHUB
                     st.session_state.clientes_db = backup_data['clientes']
                     st.session_state.usuarios_db = backup_data['usuarios']
                     st.session_state.df_tracking = pd.DataFrame(backup_data['trackings'])
                     st.session_state.dados_restaurados = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
                     
-                    st.success("✅ Dados sincronizados automaticamente do servidor!")
-                else:
-                    # Se não encontrou arquivo no GitHub, manter dados padrão
-                    st.info("📋 Usando dados padrão - primeira vez no sistema")
+                    st.success("✅ Dados sincronizados automaticamente!")
                 
                 st.session_state.backup_sincronizado = True
                 st.rerun()
                 
         except Exception as e:
-            # Em caso de erro, manter dados padrão e continuar funcionando
-            st.warning(f"⚠️ Erro na sincronização: {str(e)}")
-            st.info("📋 Continuando com dados padrão locais")
             st.session_state.backup_sincronizado = True
     
     # BACKUP AUTOMÁTICO (só admin)
@@ -796,12 +783,6 @@ def tela_login():
             if user_encontrado:
                 st.session_state.logado = True
                 st.session_state.usuario_info = user_encontrado
-                
-                # NOVO: Se é admin logando, fazer backup imediato dos dados atuais
-                if user_encontrado.get("tipo") == "admin" and 'github_token' in st.session_state:
-                    with st.spinner("🔄 Sincronizando dados do admin..."):
-                        executar_backup_github()
-                
                 st.success(f"✅ Bem-vindo, {user_encontrado['nome']}!")
                 st.rerun()
             else:
@@ -810,10 +791,6 @@ def tela_login():
             st.warning("⚠️ Preencha todos os campos!")
     
     st.markdown('</div>', unsafe_allow_html=True)
-    
-    # NOVO: Mostrar usuários disponíveis para debug
-    if st.checkbox("🔍 Ver usuários disponíveis (Debug)", value=False):
-        verificar_e_mostrar_usuarios_disponiveis()
     
     # Informações de suporte
     st.markdown("---")
@@ -831,35 +808,11 @@ def tela_login():
     
     with col2:
         st.markdown("""
-        **🧪 Contas de Teste Disponíveis:**
+        **🧪 Contas de Teste:**
         - **Admin:** admin / admin123
         - **Cliente ABC:** empresa_abc / abc123
         - **Cliente XYZ:** comercial_xyz / xyz123
-        
-        **💡 Importante:** 
-        Se não conseguir entrar, significa que os dados 
-        estão sendo sincronizados do servidor. 
-        Entre como **admin** para verificar usuários.
         """)
-
-def verificar_e_mostrar_usuarios_disponiveis():
-    """Mostra usuários disponíveis na tela de login para debug"""
-    st.markdown("---")
-    st.markdown("### 🔍 Debug - Usuários Disponíveis no Sistema:")
-    
-    if st.session_state.usuarios_db:
-        for user_id, user_data in st.session_state.usuarios_db.items():
-            status = "✅ Ativo" if user_data.get("ativo", True) else "❌ Inativo"
-            tipo = "👑 Admin" if user_data.get("tipo") == "admin" else "👤 Cliente"
-            st.write(f"**{user_id}** ({user_data.get('nome', 'Sem nome')}) - {tipo} - {status}")
-    else:
-        st.warning("⚠️ Nenhum usuário encontrado no sistema!")
-        
-    # Mostrar informação sobre sincronização
-    if 'dados_restaurados' in st.session_state:
-        st.info(f"📡 Dados sincronizados em: {st.session_state.dados_restaurados}")
-    else:
-        st.info("📡 Aguardando sincronização de dados...")
 
 def pagina_clientes():
     """Página para gerenciar clientes"""
