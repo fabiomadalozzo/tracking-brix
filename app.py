@@ -1182,7 +1182,7 @@ def dashboard_principal():
                                     'CANAL RFB': canal_rfb,
                                     'LIBERAÇAO PARANAGUA': '',
                                     'CHEGADA CIUDAD DEL ESTE PY': '',
-                                    'DESCARREGAMENTO': ''
+                                    'DESCARREGAMENTO': '',
                                     'STATUS_FINAL': '' 
                                 }
                                 
