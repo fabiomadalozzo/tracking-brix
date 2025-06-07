@@ -199,7 +199,17 @@ COLUNAS = [
     'CLIENTE', 'CONTAINER', 'CARREGAMENTO', 'EMBARQUE NAVIO',
     'SAIDA NAVIO', 'PREVISAO CHEGADA PARANAGUA', 'CHEGADA PARANAGUA',
     'CANAL RFB', 'LIBERAÇAO PARANAGUA', 'CHEGADA CIUDAD DEL ESTE PY',
-    'DESCARREGAMENTO'
+    'DESCARREGAMENTO', 'STATUS_FINAL'
+]
+
+# ADICIONAR AQUI:
+STATUS_FINAIS = [
+    "",
+    "🎉 PROCESSO FINALIZADO COM SUCESSO",
+    "⚠️ FINALIZADO COM PENDÊNCIAS", 
+    "❌ PROCESSO CANCELADO",
+    "🔄 EM PROCESSAMENTO",
+    "📋 AGUARDANDO DOCUMENTAÇÃO"
 ]
 
 def testar_token_github(token):
@@ -284,14 +294,23 @@ def inicializar_sistema():
             },
             "nicolas": {
                 "senha": "1234",
-                "tipo": "cliente",
+                "tipo": "operador",
                 "cliente_vinculado": "BENTO COMEX",
                 "nome": "NICOLAS M MARTINEZ",
                 "email": "nicolas@rrclogistica.com",
                 "ativo": True,
                 "data_criacao": "07/06/2025"
-            }
-        }
+            },
+                "operador_brix": {
+                    "senha": "op123",
+                    "tipo": "operador",
+                    "clientes_vinculados": ["MC CONFECCIONES", "BENTO COMEX"],  # Múltiplos clientes
+                    "nome": "Operador BRIX",
+                    "email": "operador@brixlogistica.com.br",
+                    "ativo": True,
+                    "data_criacao": "07/06/2025"
+           }
+       }
         
         # DADOS PADRÃO PARA TRACKINGS
         st.session_state.df_tracking = pd.DataFrame([
@@ -360,9 +379,13 @@ def verificar_login(usuario, senha):
 def filtrar_dados_por_cliente(df, usuario_info):
     """Filtra dados baseado no tipo de usuário"""
     if usuario_info["tipo"] == "admin":
-        return df
-    else:
-        return df[df['CLIENTE'] == usuario_info["cliente_vinculado"]]
+        return df  # Admin vê tudo
+    elif usuario_info["tipo"] == "operador":
+        # Operador vê múltiplos clientes
+        return df[df['CLIENTE'].isin(usuario_info["clientes_vinculados"])]
+    else:  # cliente
+        # Cliente vê apenas seus dados
+        return df[df['CLIENTE'].isin(usuario_info["clientes_vinculados"])]
 
 def colorir_linha(row):
     """Aplica cores baseado no canal RFB com texto preto forçado"""
@@ -1144,6 +1167,7 @@ def dashboard_principal():
                             previsao = st.text_input("Previsão Chegada Paranaguá", placeholder="DD/MM/AAAA")
                             canal_rfb = st.selectbox("Canal RFB", ['', 'VERDE', 'VERMELHO'])
                             chegada = st.text_input("Chegada Paranaguá", placeholder="DD/MM/AAAA")
+                            status_final = st.selectbox("Status Final:", STATUS_FINAIS)
                         
                         if st.form_submit_button("📦 Adicionar Tracking", type="primary"):
                             if cliente_selecionado and container:
@@ -1159,6 +1183,7 @@ def dashboard_principal():
                                     'LIBERAÇAO PARANAGUA': '',
                                     'CHEGADA CIUDAD DEL ESTE PY': '',
                                     'DESCARREGAMENTO': ''
+                                    'STATUS_FINAL': '' 
                                 }
                                 
                                 novo_df = pd.DataFrame([novo_tracking])
@@ -1336,6 +1361,29 @@ def dashboard_principal():
                     st.write(f"**🔓 Liberação:** {row['LIBERAÇAO PARANAGUA']}")
                     st.write(f"**🚛 Chegada Ciudad del Este:** {row['CHEGADA CIUDAD DEL ESTE PY']}")
                     st.write(f"**📦 Descarregamento:** {row['DESCARREGAMENTO']}")
+
+                # ADICIONAR AQUI (depois do col2):
+                # Badge de status final
+                if row.get('STATUS_FINAL'):
+                    if 'SUCESSO' in row['STATUS_FINAL']:
+                        status_color = "#d4edda"  # Verde claro
+                        status_border = "#28a745"  # Verde
+                    elif 'PENDÊNCIAS' in row['STATUS_FINAL']:
+                        status_color = "#fff3cd"  # Amarelo claro  
+                        status_border = "#ffc107"  # Amarelo
+                    elif 'CANCELADO' in row['STATUS_FINAL']:
+                        status_color = "#f8d7da"  # Vermelho claro
+                        status_border = "#dc3545"  # Vermelho
+                    else:
+                        status_color = "#e2e3e5"  # Cinza
+                        status_border = "#6c757d"  # Cinza
+                        
+                    st.markdown(f"""
+                    <div style='background: {status_color}; border: 2px solid {status_border}; 
+                                 padding: 8px; border-radius: 5px; margin: 10px 0; text-align: center;'>
+                        <strong>{row['STATUS_FINAL']}</strong>
+                    </div>
+                    """, unsafe_allow_html=True)
                 
                 st.markdown("---")
 
@@ -1452,7 +1500,9 @@ def dashboard_principal():
                                 edit_liberacao = st.text_input("Liberação Paranaguá", value=registro['LIBERAÇAO PARANAGUA'])
                                 edit_chegada_py = st.text_input("Chegada Ciudad del Este PY", value=registro['CHEGADA CIUDAD DEL ESTE PY'])
                                 edit_descarregamento = st.text_input("Descarregamento", value=registro['DESCARREGAMENTO'])
-                            
+                                edit_status_final = st.selectbox("Status Final:", STATUS_FINAIS, 
+                                   index=STATUS_FINAIS.index(registro.get('STATUS_FINAL', '')) if registro.get('STATUS_FINAL', '') in STATUS_FINAIS else 0)
+                                
                             submitted_edit = st.form_submit_button("💾 Salvar Alterações", type="primary")
                             
                             if submitted_edit:
