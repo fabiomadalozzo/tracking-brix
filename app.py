@@ -397,91 +397,228 @@ def gerar_senha_temporaria():
     return ''.join(random.choices(string.ascii_lowercase + string.digits, k=8))
 
 def sidebar_backup_system():
-    """Sistema de backup na sidebar - SINCRONIZAÇÃO PARA TODOS"""
+    """Sistema de backup na sidebar - APENAS GITHUB SEGURO"""
     with st.sidebar:
         st.markdown("---")
-        st.subheader("💾 Dados Atuais")
+        st.subheader("💾 Sistema BRIX")
         
         # Estatísticas
         st.write(f"🏢 Clientes: {len(st.session_state.clientes_db)}")
         st.write(f"👥 Usuários: {len(st.session_state.usuarios_db)}")
         st.write(f"📦 Trackings: {len(st.session_state.df_tracking)}")
         
-        # SINCRONIZAÇÃO AUTOMÁTICA PARA TODOS (admin e clientes)
-        if 'backup_sincronizado' not in st.session_state:
-            try:
-                with st.spinner("🔄 Carregando dados atualizados..."):
-                    import requests
-                    import base64
-                    
-                    # Configurações do GitHub
-                    GITHUB_TOKEN = "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"
-                    GITHUB_REPO = "fabiomadalozzo/brix-backup"
-                    GITHUB_FILE = "backup_brix.json"
-                    GITHUB_API_URL = f"https://api.github.com/repos/{GITHUB_REPO}/contents/{GITHUB_FILE}"
-                    
-                    headers = {
-                        'Authorization': f'token {GITHUB_TOKEN}',
-                        'Accept': 'application/vnd.github.v3+json'
-                    }
-                    
-                    response = requests.get(GITHUB_API_URL, headers=headers, timeout=10)
-                    
-                    if response.status_code == 200:
-                        file_data = response.json()
-                        content_base64 = file_data['content']
-                        content_decoded = base64.b64decode(content_base64).decode('utf-8')
-                        backup_data = json.loads(content_decoded)
+        # CONFIGURAÇÃO SEGURA DO TOKEN (UMA VEZ SÓ)
+        if 'github_token_configurado' not in st.session_state:
+            st.warning("🔐 **Configuração Inicial Necessária**")
+            
+            with st.expander("⚙️ Configurar GitHub (Uma vez só)", expanded=True):
+                st.markdown("""
+                **🔧 Configuração rápida:**
+                1. Acesse: https://github.com/settings/tokens
+                2. Clique "Generate new token (classic)"
+                3. Nome: "BRIX Backup Seguro"
+                4. Marque: ✅ repo
+                5. Cole o token aqui:
+                """)
+                
+                token_input = st.text_input(
+                    "🔑 Token GitHub:", 
+                    type="password", 
+                    placeholder="ghp_seu_novo_token_aqui...",
+                    help="Cole seu token GitHub aqui"
+                )
+                
+                if st.button("💾 Configurar") and token_input:
+                    try:
+                        import requests
+                        test_response = requests.get(
+                            "https://api.github.com/user", 
+                            headers={'Authorization': f'token {token_input}'},
+                            timeout=5
+                        )
                         
-                        # Restaurar dados automaticamente PARA TODOS
-                        st.session_state.clientes_db = backup_data['clientes']
-                        st.session_state.usuarios_db = backup_data['usuarios']
-                        st.session_state.df_tracking = pd.DataFrame(backup_data['trackings'])
-                        st.session_state.dados_restaurados = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
-                        st.session_state.backup_sincronizado = True
-                        
-                        st.success("✅ Dados atualizados!")
-                        st.rerun()
-                    else:
-                        st.session_state.backup_sincronizado = True
-                        
-            except Exception as e:
-                st.session_state.backup_sincronizado = True
-                if st.session_state.usuario_info.get("tipo") == "admin":
-                    st.warning("⚠️ Erro ao carregar dados atualizados")
+                        if test_response.status_code == 200:
+                            st.session_state.github_token = token_input
+                            st.session_state.github_token_configurado = True
+                            st.success("✅ Configurado! Recarregando...")
+                            st.rerun()
+                        else:
+                            st.error("❌ Token inválido!")
+                    except:
+                        st.error("❌ Erro de conexão!")
+            
+            return
         
-        # SISTEMA DE BACKUP COMPLETO (APENAS ADMIN)
+        # SISTEMA CONFIGURADO - AUTOMAÇÃO ATIVA
+        st.success("🔐 **GitHub:** Configurado")
+        st.success("🤖 **Automação:** Ativa")
+        
+        # Token configurado - executar automação
+        executar_sistema_github()
+        
+        # CONTROLES APENAS PARA ADMIN
         if st.session_state.usuario_info and st.session_state.usuario_info.get("tipo") == "admin":
-            sistema_backup_automatico_admin()
-        else:
-            # PARA CLIENTES: Só mostrar status
             st.markdown("---")
-            st.subheader("📊 Seus Dados")
-            st.success("✅ Dados sempre atualizados")
+            st.subheader("⚙️ Controles Admin")
             
-            if 'dados_restaurados' in st.session_state:
-                st.info(f"🕐 Última atualização: {st.session_state.dados_restaurados}")
+            col1, col2 = st.columns(2)
             
-            # Botão manual de atualização para clientes
-            if st.button("🔄 Atualizar Dados", help="Buscar dados mais recentes"):
-                st.session_state.backup_sincronizado = False  # Força nova sincronização
+            with col1:
+                if st.button("📤 Backup", help="Backup manual"):
+                    executar_backup_github()
+            
+            with col2:
+                if st.button("🔄 Atualizar", help="Sincronizar agora"):
+                    st.session_state.backup_sincronizado = False
+                    st.rerun()
+            
+            # Status do último backup
+            if 'ultimo_backup' in st.session_state:
+                st.info(f"💾 Último backup: {st.session_state.ultimo_backup}")
+        
+        else:
+            # PARA CLIENTES
+            st.markdown("---")
+            st.info("📊 Seus dados estão sempre atualizados")
+            
+            if st.button("🔄 Atualizar Dados"):
+                st.session_state.backup_sincronizado = False
                 st.rerun()
+        
+        # STATUS
+        if 'dados_restaurados' in st.session_state:
+            st.write(f"🕐 Última sync: {st.session_state.dados_restaurados}")
+        
+        # Reconfiguração
+        if st.button("🔧 Reconfigurar"):
+            del st.session_state.github_token_configurado
+            if 'github_token' in st.session_state:
+                del st.session_state.github_token
+            st.rerun()
 
+def executar_sistema_github():
+    """Executa sincronização e backup automático do GitHub"""
+    GITHUB_TOKEN = st.session_state.github_token
+    GITHUB_REPO = "fabiomadalozzo/brix-backup"
+    GITHUB_FILE = "backup_brix.json"
+    GITHUB_API_URL = f"https://api.github.com/repos/{GITHUB_REPO}/contents/{GITHUB_FILE}"
+    
+    # SINCRONIZAÇÃO AUTOMÁTICA (primeira vez)
+    if 'backup_sincronizado' not in st.session_state:
+        try:
+            with st.spinner("🔄 Sincronizando..."):
+                import requests
+                import base64
+                
+                headers = {
+                    'Authorization': f'token {GITHUB_TOKEN}',
+                    'Accept': 'application/vnd.github.v3+json'
+                }
+                
+                response = requests.get(GITHUB_API_URL, headers=headers, timeout=10)
+                
+                if response.status_code == 200:
+                    file_data = response.json()
+                    content_base64 = file_data['content']
+                    content_decoded = base64.b64decode(content_base64).decode('utf-8')
+                    backup_data = json.loads(content_decoded)
+                    
+                    st.session_state.clientes_db = backup_data['clientes']
+                    st.session_state.usuarios_db = backup_data['usuarios']
+                    st.session_state.df_tracking = pd.DataFrame(backup_data['trackings'])
+                    st.session_state.dados_restaurados = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+                    
+                    st.success("✅ Dados sincronizados!")
+                
+                st.session_state.backup_sincronizado = True
+                st.rerun()
+                
+        except Exception as e:
+            st.session_state.backup_sincronizado = True
+    
+    # BACKUP AUTOMÁTICO (só admin)
+    if st.session_state.usuario_info.get("tipo") == "admin":
+        dados_atuais = {
+            'clientes': len(st.session_state.clientes_db),
+            'usuarios': len(st.session_state.usuarios_db),
+            'trackings': len(st.session_state.df_tracking)
+        }
+        
+        if 'dados_anteriores' not in st.session_state:
+            st.session_state.dados_anteriores = dados_atuais
+        
+        if dados_atuais != st.session_state.dados_anteriores:
+            executar_backup_github()
+            st.session_state.dados_anteriores = dados_atuais
+
+def executar_backup_github():
+    """Executa backup no GitHub"""
+    try:
+        import requests
+        import base64
+        
+        GITHUB_TOKEN = st.session_state.github_token
+        GITHUB_REPO = "fabiomadalozzo/brix-backup"
+        GITHUB_FILE = "backup_brix.json"
+        GITHUB_API_URL = f"https://api.github.com/repos/{GITHUB_REPO}/contents/{GITHUB_FILE}"
+        
+        backup_data = {
+            'clientes': st.session_state.clientes_db,
+            'usuarios': st.session_state.usuarios_db,
+            'trackings': st.session_state.df_tracking.to_dict('records'),
+            'metadata': {
+                'data_backup': datetime.now().strftime("%d/%m/%Y %H:%M:%S"),
+                'versao': '2.1-GITHUB-SEGURO'
+            }
+        }
+        
+        json_content = json.dumps(backup_data, ensure_ascii=False, indent=2)
+        content_base64 = base64.b64encode(json_content.encode('utf-8')).decode('utf-8')
+        
+        headers = {
+            'Authorization': f'token {GITHUB_TOKEN}',
+            'Accept': 'application/vnd.github.v3+json'
+        }
+        
+        get_response = requests.get(GITHUB_API_URL, headers=headers)
+        
+        github_data = {
+            'message': f'Backup BRIX - {datetime.now().strftime("%d/%m/%Y %H:%M:%S")}',
+            'content': content_base64
+        }
+        
+        if get_response.status_code == 200:
+            github_data['sha'] = get_response.json()['sha']
+        
+        response = requests.put(GITHUB_API_URL, json=github_data, headers=headers)
+        
+        if response.status_code in [200, 201]:
+            st.session_state.ultimo_backup = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+            st.success("✅ Backup realizado!")
+            return True
+        else:
+            st.error("❌ Erro no backup")
+            return False
+            
+    except Exception as e:
+        st.error(f"❌ Erro: {str(e)}")
+        return False
+            
 def sistema_backup_automatico_admin():
-    """Sistema de backup completo APENAS PARA ADMIN"""
+    """Sistema de backup automático APENAS PARA ADMIN - VERSÃO SEGURA"""
     
     st.markdown("---")
     st.subheader("⚙️ Backup Automático (Admin)")
     
-    # Configurações do GitHub
-    GITHUB_TOKEN = "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"
+    # Usar token seguro já configurado
+    GITHUB_TOKEN = st.session_state.github_token
     GITHUB_REPO = "fabiomadalozzo/brix-backup"
     GITHUB_FILE = "backup_brix.json"
     GITHUB_API_URL = f"https://api.github.com/repos/{GITHUB_REPO}/contents/{GITHUB_FILE}"
     
     # FUNÇÃO DE SALVAMENTO AUTOMÁTICO
     def salvar_automaticamente():
-        """Salva dados automaticamente no GitHub"""
+        """Salva dados automaticamente no GitHub de forma segura"""
         try:
             import requests
             import base64
@@ -492,7 +629,7 @@ def sistema_backup_automatico_admin():
                 'trackings': st.session_state.df_tracking.to_dict('records'),
                 'metadata': {
                     'data_backup': datetime.now().strftime("%d/%m/%Y %H:%M:%S"),
-                    'versao': '2.0',
+                    'versao': '2.1-SEGURA',
                     'total_clientes': len(st.session_state.clientes_db),
                     'total_usuarios': len(st.session_state.usuarios_db),
                     'total_trackings': len(st.session_state.df_tracking)
@@ -511,14 +648,14 @@ def sistema_backup_automatico_admin():
             get_response = requests.get(GITHUB_API_URL, headers=headers)
             
             github_data = {
-                'message': f'Backup automático - {datetime.now().strftime("%d/%m/%Y %H:%M:%S")}',
+                'message': f'[SEGURO] Backup automático BRIX - {datetime.now().strftime("%d/%m/%Y %H:%M:%S")}',
                 'content': content_base64
             }
             
             if get_response.status_code == 200:
                 github_data['sha'] = get_response.json()['sha']
             
-            response = requests.put(GITHUB_API_URL, json=github_data, headers=headers, timeout=10)
+            response = requests.put(GITHUB_API_URL, json=github_data, headers=headers, timeout=15)
             
             if response.status_code in [200, 201]:
                 st.session_state.ultimo_backup = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
@@ -528,11 +665,12 @@ def sistema_backup_automatico_admin():
         except Exception as e:
             return False
     
-    # EXECUTAR SALVAMENTO AUTOMÁTICO A CADA MUDANÇA
+    # DETECÇÃO DE MUDANÇAS E BACKUP AUTOMÁTICO
     dados_atuais = {
         'clientes': len(st.session_state.clientes_db),
         'usuarios': len(st.session_state.usuarios_db),
-        'trackings': len(st.session_state.df_tracking)
+        'trackings': len(st.session_state.df_tracking),
+        'hash': str(hash(str(st.session_state.clientes_db) + str(st.session_state.usuarios_db)))
     }
     
     if 'dados_anteriores' not in st.session_state:
@@ -540,27 +678,63 @@ def sistema_backup_automatico_admin():
     
     # Se dados mudaram, salvar automaticamente
     if dados_atuais != st.session_state.dados_anteriores:
-        with st.spinner("💾 Backup automático..."):
+        with st.spinner("💾 Realizando backup automático seguro..."):
             if salvar_automaticamente():
-                st.success("✅ Backup realizado!")
+                st.success("✅ Backup automático realizado com sucesso!")
             else:
-                st.warning("⚠️ Erro no backup")
+                st.error("❌ Erro no backup automático")
         
         st.session_state.dados_anteriores = dados_atuais
     
-    # STATUS ADMIN
+    # STATUS DO SISTEMA ADMIN
     st.success("🤖 **Backup Automático:** ATIVO")
+    st.success("🔐 **Segurança:** Token protegido")
+    st.success("📊 **Monitoramento:** Detecta mudanças automaticamente")
     
     if 'ultimo_backup' in st.session_state:
-        st.write(f"💾 **Último backup:** {st.session_state.ultimo_backup}")
+        st.info(f"💾 **Último backup:** {st.session_state.ultimo_backup}")
     
-    # Botão manual de backup
-    if st.button("📤 Backup Manual", help="Forçar backup agora"):
-        with st.spinner("💾 Salvando..."):
-            if salvar_automaticamente():
-                st.success("✅ Backup manual realizado!")
-            else:
-                st.error("❌ Erro no backup manual")
+    # CONTROLES MANUAIS
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        if st.button("📤 Backup Manual", help="Forçar backup imediato"):
+            with st.spinner("💾 Realizando backup manual..."):
+                if salvar_automaticamente():
+                    st.success("✅ Backup manual concluído!")
+                else:
+                    st.error("❌ Erro no backup manual")
+    
+    with col2:
+        if st.button("🔄 Sincronizar", help="Forçar sincronização"):
+            st.session_state.backup_sincronizado = False
+            st.rerun()
+    
+    # INFORMAÇÕES DE SEGURANÇA
+    with st.expander("🔒 Informações de Segurança"):
+        st.markdown("""
+        **✅ SISTEMA TOTALMENTE SEGURO:**
+        
+        **🔐 Token Protegido:**
+        - Não aparece no código fonte
+        - Salvo apenas na sua sessão
+        - Testado antes de usar
+        
+        **🤖 Automação Segura:**
+        - Backup automático a cada mudança
+        - Sincronização automática ao abrir
+        - Monitoramento contínuo
+        
+        **📊 Funcionalidades:**
+        - Histórico completo no GitHub
+        - Detecção inteligente de mudanças
+        - Controles manuais quando necessário
+        
+        **🌐 Acesso Multi-Dispositivo:**
+        - Funciona em qualquer computador
+        - Dados sempre sincronizados
+        - Configuração única por sessão
+        """)
         
 def tela_login():
     """Tela de login - CORRIGIDA para mobile"""
