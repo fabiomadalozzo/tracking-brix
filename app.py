@@ -377,15 +377,22 @@ def verificar_login(usuario, senha):
     return None
 
 def filtrar_dados_por_cliente(df, usuario_info):
-    """Filtra dados baseado no tipo de usuário"""
+    """Filtra dados baseado no tipo de usuário - VERSÃO COMPATÍVEL"""
     if usuario_info["tipo"] == "admin":
         return df  # Admin vê tudo
-    elif usuario_info["tipo"] == "operador":
-        # Operador vê múltiplos clientes
-        return df[df['CLIENTE'].isin(usuario_info["clientes_vinculados"])]
-    else:  # cliente
-        # Cliente vê apenas seus dados
-        return df[df['CLIENTE'].isin(usuario_info["clientes_vinculados"])]
+    else:
+        # Compatibilidade: suporte tanto singular quanto plural
+        if "clientes_vinculados" in usuario_info:
+            # Novo formato (lista)
+            clientes = usuario_info["clientes_vinculados"]
+            return df[df['CLIENTE'].isin(clientes)]
+        elif "cliente_vinculado" in usuario_info:
+            # Formato antigo (string única)
+            cliente = usuario_info["cliente_vinculado"]
+            return df[df['CLIENTE'] == cliente]
+        else:
+            # Fallback: retorna vazio se não encontrar
+            return df.iloc[0:0]
 
 def colorir_linha(row):
     """Aplica cores baseado no canal RFB com texto preto forçado"""
