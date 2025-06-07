@@ -229,27 +229,27 @@ def inicializar_sistema():
         
         # DADOS PADRÃO PARA CLIENTES
         st.session_state.clientes_db = {
-            "EMPRESA ABC LTDA": {
-                "razao_social": "EMPRESA ABC LTDA",
-                "nome_fantasia": "ABC Importadora",
-                "cnpj": "12.345.678/0001-01",
-                "email": "contato@empresaabc.com.br",
-                "telefone": "(11) 1111-1111",
-                "endereco": "Rua A, 123 - São Paulo/SP",
-                "contato": "João Silva",
+            "MC CONFECCIONES": {
+                "razao_social": "MC CONFECCIONES",
+                "nome_fantasia": "MC CONFECCIONES",
+                "cnpj": "RUC: 80104097-3",
+                "email": "aristide.nosenzo@mcparaguay.com",
+                "telefone": "4531984037",
+                "endereco": "",
+                "contato": "Aristide Nosenzo",
                 "ativo": True,
-                "data_cadastro": "01/06/2025"
+                "data_cadastro": "06/06/2025"
             },
-            "COMERCIAL XYZ S.A.": {
-                "razao_social": "COMERCIAL XYZ S.A.",
-                "nome_fantasia": "XYZ Trading",
-                "cnpj": "98.765.432/0001-02",
-                "email": "gerencia@comercialxyz.com.br",
-                "telefone": "(21) 2222-2222",
-                "endereco": "Av. B, 456 - Rio de Janeiro/RJ",
-                "contato": "Maria Santos",
+            "BENTO COMEX": {
+                "razao_social": "BENTO COMEX",
+                "nome_fantasia": "BENTO COMEX",
+                "cnpj": "RUC",
+                "email": "nicolas@rrclogistica.com",
+                "telefone": "+595 61502286",
+                "endereco": "",
+                "contato": "",
                 "ativo": True,
-                "data_cadastro": "01/06/2025"
+                "data_cadastro": "07/06/2025"
             }
         }
         
@@ -264,23 +264,32 @@ def inicializar_sistema():
                 "ativo": True,
                 "data_criacao": "01/06/2025"
             },
-            "empresa_abc": {
-                "senha": "abc123",
+            "aristide": {
+                "senha": "1234",
                 "tipo": "cliente",
-                "cliente_vinculado": "EMPRESA ABC LTDA",
-                "nome": "Empresa ABC",
-                "email": "contato@empresaabc.com.br",
+                "cliente_vinculado": "MC CONFECCIONES",
+                "nome": "Aristide Nosenzo",
+                "email": "aristide.nosenzo@mcparaguay.com",
                 "ativo": True,
-                "data_criacao": "01/06/2025"
+                "data_criacao": "06/06/2025"
             },
-            "comercial_xyz": {
-                "senha": "xyz123",
+            "rodrigo": {
+                "senha": "1234",
                 "tipo": "cliente",
-                "cliente_vinculado": "COMERCIAL XYZ S.A.",
-                "nome": "Comercial XYZ",
-                "email": "gerencia@comercialxyz.com.br", 
+                "cliente_vinculado": "MC CONFECCIONES",
+                "nome": "RODRIGO CALDAS",
+                "email": "rodrigo@stillosrc2.com.br",
                 "ativo": True,
-                "data_criacao": "01/06/2025"
+                "data_criacao": "06/06/2025"
+            },
+            "nicolas": {
+                "senha": "1234",
+                "tipo": "cliente",
+                "cliente_vinculado": "BENTO COMEX",
+                "nome": "NICOLAS M MARTINEZ",
+                "email": "nicolas@rrclogistica.com",
+                "ativo": True,
+                "data_criacao": "07/06/2025"
             }
         }
         
