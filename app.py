@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Sistema de Tracking BRIX - VERSÃO SEGURA
-PRIORIDADE: NUNCA PERDER DADOS DO USUÁRIO
+Sistema de Tracking BRIX - Versão com Token GitHub Persistente
+NOVA FUNCIONALIDADE: Token salvo permanentemente no computador
 Escritório de contabilidade - Brasil
 """
 
@@ -13,6 +13,8 @@ import plotly.graph_objects as go
 from datetime import datetime, timedelta
 import json
 import base64
+import os
+from pathlib import Path
 
 # Configuração da página
 st.set_page_config(
@@ -178,6 +180,88 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
+# 🔐 CONFIGURAÇÃO DO TOKEN GITHUB (APENAS VOCÊ PRECISA ALTERAR)
+# Cole seu token GitHub aqui - será usado automaticamente em qualquer computador
+GITHUB_TOKEN_CONFIGURADO = "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"  # Cole seu token aqui: ghp_xxxxxxxxxx
+
+# FUNÇÕES PARA GERENCIAR TOKEN
+def obter_token_github():
+    """Obtém o token GitHub - primeiro tenta o configurado, depois o salvo localmente"""
+    # 1. Usar token configurado no código (prioritário)
+    if GITHUB_TOKEN_CONFIGURADO and GITHUB_TOKEN_CONFIGURADO.startswith('ghp_'):
+        return GITHUB_TOKEN_CONFIGURADO
+    
+    # 2. Tentar carregar token salvo localmente (fallback)
+    return carregar_token_persistente()
+
+def obter_diretorio_config():
+    """Obtém o diretório de configuração do BRIX"""
+    home_dir = Path.home()
+    config_dir = home_dir / ".brix_config"
+    config_dir.mkdir(exist_ok=True)
+    return config_dir
+
+def salvar_token_persistente(token):
+    """Salva o token GitHub de forma permanente"""
+    try:
+        config_dir = obter_diretorio_config()
+        token_file = config_dir / "github_token.txt"
+        
+        # Criptografia simples para segurança básica
+        token_encoded = base64.b64encode(token.encode()).decode()
+        
+        with open(token_file, 'w') as f:
+            f.write(token_encoded)
+        
+        return True
+    except Exception as e:
+        st.error(f"❌ Erro ao salvar token: {str(e)}")
+        return False
+
+def carregar_token_persistente():
+    """Carrega o token GitHub salvo"""
+    try:
+        config_dir = obter_diretorio_config()
+        token_file = config_dir / "github_token.txt"
+        
+        if token_file.exists():
+            with open(token_file, 'r') as f:
+                token_encoded = f.read().strip()
+            
+            if token_encoded:
+                token = base64.b64decode(token_encoded.encode()).decode()
+                return token
+        
+        return None
+    except Exception:
+        return None
+
+def remover_token_persistente():
+    """Remove o token salvo"""
+    try:
+        config_dir = obter_diretorio_config()
+        token_file = config_dir / "github_token.txt"
+        
+        if token_file.exists():
+            token_file.unlink()
+        
+        return True
+    except Exception:
+        return False
+
+def testar_token_github(token):
+    """Testa se o token GitHub é válido"""
+    try:
+        import requests
+        test_response = requests.get(
+            "https://api.github.com/user", 
+            headers={'Authorization': f'token {token}'},
+            timeout=5
+        )
+        return test_response.status_code == 200
+    except Exception:
+        return False
+
 # Dados da empresa
 DADOS_EMPRESA = {
     'nome': 'BRIX LOGÍSTICA',
@@ -191,13 +275,20 @@ DADOS_EMPRESA = {
 # Colunas do sistema
 COLUNAS = [
     'CLIENTE', 'CONTAINER', 'CARREGAMENTO', 'EMBARQUE NAVIO',
-    'SAIDA NAVIO', 'PREVISAO CHEGADA Porto Brasileiro', 'CHEGADA Porto Brasileiro',
-    'CANAL RFB', 'LIBERAÇAO Porto Brasileiro', 'CHEGADA CIUDAD DEL ESTE PY',
+    'SAIDA NAVIO', 'PREVISAO CHEGADA PARANAGUA', 'CHEGADA PARANAGUA',
+    'CANAL RFB', 'LIBERAÇAO PARANAGUA', 'CHEGADA CIUDAD DEL ESTE PY',
     'DESCARREGAMENTO'
 ]
 
 def inicializar_sistema():
     """Inicializa o sistema com dados padrão se necessário"""
+    
+    # NOVO: Configurar token automaticamente
+    if 'github_token' not in st.session_state:
+        token_configurado = obter_token_github()
+        if token_configurado and testar_token_github(token_configurado):
+            st.session_state.github_token = token_configurado
+            st.session_state.github_token_configurado = True
     
     # Inicializar dados básicos se não existirem
     if 'sistema_inicializado' not in st.session_state:
@@ -267,10 +358,10 @@ def inicializar_sistema():
                 'CARREGAMENTO': '15/05/2025',
                 'EMBARQUE NAVIO': '18/05/2025',
                 'SAIDA NAVIO': '20/05/2025',
-                'PREVISAO CHEGADA Porto Brasileiro': '25/05/2025',
-                'CHEGADA Porto Brasileiro': '24/05/2025',
+                'PREVISAO CHEGADA PARANAGUA': '25/05/2025',
+                'CHEGADA PARANAGUA': '24/05/2025',
                 'CANAL RFB': 'VERDE',
-                'LIBERAÇAO Porto Brasileiro': '24/05/2025',
+                'LIBERAÇAO PARANAGUA': '24/05/2025',
                 'CHEGADA CIUDAD DEL ESTE PY': '26/05/2025',
                 'DESCARREGAMENTO': '28/05/2025'
             },
@@ -280,10 +371,10 @@ def inicializar_sistema():
                 'CARREGAMENTO': '22/05/2025',
                 'EMBARQUE NAVIO': '25/05/2025',
                 'SAIDA NAVIO': '27/05/2025',
-                'PREVISAO CHEGADA Porto Brasileiro': '02/06/2025',
-                'CHEGADA Porto Brasileiro': '',
+                'PREVISAO CHEGADA PARANAGUA': '02/06/2025',
+                'CHEGADA PARANAGUA': '',
                 'CANAL RFB': '',
-                'LIBERAÇAO Porto Brasileiro': '',
+                'LIBERAÇAO PARANAGUA': '',
                 'CHEGADA CIUDAD DEL ESTE PY': '',
                 'DESCARREGAMENTO': ''
             },
@@ -293,10 +384,10 @@ def inicializar_sistema():
                 'CARREGAMENTO': '20/05/2025',
                 'EMBARQUE NAVIO': '23/05/2025',
                 'SAIDA NAVIO': '25/05/2025',
-                'PREVISAO CHEGADA Porto Brasileiro': '30/05/2025',
-                'CHEGADA Porto Brasileiro': '29/05/2025',
+                'PREVISAO CHEGADA PARANAGUA': '30/05/2025',
+                'CHEGADA PARANAGUA': '29/05/2025',
                 'CANAL RFB': 'VERMELHO',
-                'LIBERAÇAO Porto Brasileiro': '',
+                'LIBERAÇAO PARANAGUA': '',
                 'CHEGADA CIUDAD DEL ESTE PY': '',
                 'DESCARREGAMENTO': ''
             }
@@ -311,87 +402,45 @@ def inicializar_sistema():
         # Marcar que dados foram inicializados
         st.session_state.dados_inicializados = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
 
-# 🔐 CONFIGURAÇÃO DO TOKEN GITHUB (APENAS VOCÊ PRECISA ALTERAR)
-# Cole seu token GitHub aqui - será usado automaticamente em qualquer computador
-GITHUB_TOKEN_CONFIGURADO = "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"  # ← Cole seu token aqui
-
-# FUNÇÕES PARA GERENCIAR TOKEN
-def obter_token_github():
-    """Obtém o token GitHub - primeiro tenta o configurado, depois o salvo localmente"""
-    # 1. Usar token configurado no código (prioritário)
-    if GITHUB_TOKEN_CONFIGURADO and GITHUB_TOKEN_CONFIGURADO.startswith('ghp_') and len(GITHUB_TOKEN_CONFIGURADO) > 20:
-        return GITHUB_TOKEN_CONFIGURADO
+def criar_backup_manual():
+    """Cria backup manual dos dados para download"""
+    backup_data = {
+        'clientes': st.session_state.clientes_db,
+        'usuarios': st.session_state.usuarios_db,
+        'trackings': st.session_state.df_tracking.to_dict('records'),
+        'metadata': {
+            'data_backup': datetime.now().strftime("%d/%m/%Y %H:%M:%S"),
+            'versao': '2.0',
+            'total_clientes': len(st.session_state.clientes_db),
+            'total_usuarios': len(st.session_state.usuarios_db),
+            'total_trackings': len(st.session_state.df_tracking)
+        }
+    }
     
-    # 2. Tentar carregar token salvo localmente (fallback)
-    return carregar_token_persistente()
+    json_backup = json.dumps(backup_data, ensure_ascii=False, indent=2)
+    return json_backup
 
-def obter_diretorio_config():
-    """Obtém o diretório de configuração do BRIX"""
-    home_dir = Path.home()
-    config_dir = home_dir / ".brix_config"
-    config_dir.mkdir(exist_ok=True)
-    return config_dir
-
-def salvar_token_persistente(token):
-    """Salva o token GitHub de forma permanente"""
+def restaurar_backup_manual(json_data):
+    """Restaura dados a partir de backup manual"""
     try:
-        config_dir = obter_diretorio_config()
-        token_file = config_dir / "github_token.txt"
+        backup_data = json.loads(json_data)
         
-        # Criptografia simples para segurança básica
-        token_encoded = base64.b64encode(token.encode()).decode()
+        # Validar estrutura do backup
+        if not all(key in backup_data for key in ['clientes', 'usuarios', 'trackings']):
+            return False, "❌ Arquivo de backup inválido!"
         
-        with open(token_file, 'w') as f:
-            f.write(token_encoded)
+        # Restaurar dados
+        st.session_state.clientes_db = backup_data['clientes']
+        st.session_state.usuarios_db = backup_data['usuarios']
+        st.session_state.df_tracking = pd.DataFrame(backup_data['trackings'])
         
-        return True
+        # Atualizar metadata
+        st.session_state.dados_restaurados = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+        
+        return True, "✅ Backup restaurado com sucesso!"
+        
     except Exception as e:
-        st.error(f"❌ Erro ao salvar token: {str(e)}")
-        return False
-
-def carregar_token_persistente():
-    """Carrega o token GitHub salvo"""
-    try:
-        config_dir = obter_diretorio_config()
-        token_file = config_dir / "github_token.txt"
-        
-        if token_file.exists():
-            with open(token_file, 'r') as f:
-                token_encoded = f.read().strip()
-            
-            if token_encoded:
-                token = base64.b64decode(token_encoded.encode()).decode()
-                return token
-        
-        return None
-    except Exception:
-        return None
-
-def remover_token_persistente():
-    """Remove o token salvo"""
-    try:
-        config_dir = obter_diretorio_config()
-        token_file = config_dir / "github_token.txt"
-        
-        if token_file.exists():
-            token_file.unlink()
-        
-        return True
-    except Exception:
-        return False
-
-def testar_token_github(token):
-    """Testa se o token GitHub é válido"""
-    try:
-        import requests
-        test_response = requests.get(
-            "https://api.github.com/user", 
-            headers={'Authorization': f'token {token}'},
-            timeout=10
-        )
-        return test_response.status_code == 200
-    except Exception:
-        return False
+        return False, f"❌ Erro ao restaurar backup: {str(e)}"
 
 def verificar_login(usuario, senha):
     """Verifica credenciais do usuário"""
@@ -440,70 +489,246 @@ def gerar_senha_temporaria():
     return ''.join(random.choices(string.ascii_lowercase + string.digits, k=8))
 
 def sidebar_backup_system():
-    """Sistema de backup manual na sidebar - VERSÃO SEGURA"""
+    """Sistema de backup na sidebar - VERSÃO AUTOMÁTICA PARA CLIENTES"""
     with st.sidebar:
         st.markdown("---")
-        st.subheader("💾 Sistema de Backup")
+        st.subheader("💾 Sistema BRIX")
         
-        # Estatísticas atuais
-        st.info(f"""
-        **📊 Dados Atuais:**
-        - 🏢 Clientes: {len(st.session_state.clientes_db)}
-        - 👥 Usuários: {len(st.session_state.usuarios_db)}
-        - 📦 Trackings: {len(st.session_state.df_tracking)}
-        """)
+        # Estatísticas
+        st.write(f"🏢 Clientes: {len(st.session_state.clientes_db)}")
+        st.write(f"👥 Usuários: {len(st.session_state.usuarios_db)}")
+        st.write(f"📦 Trackings: {len(st.session_state.df_tracking)}")
         
-        # BACKUP MANUAL - Download
-        st.markdown("### 📤 Fazer Backup")
-        backup_json = criar_backup_manual()
-        filename = f"backup_brix_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+        # MODIFICADO: Sistema automático
+        if 'github_token_configurado' not in st.session_state:
+            # Tentar configurar automaticamente
+            token_configurado = obter_token_github()
+            if token_configurado and testar_token_github(token_configurado):
+                st.session_state.github_token = token_configurado
+                st.session_state.github_token_configurado = True
+                st.success("🔐 **Sistema configurado automaticamente!**")
+                st.rerun()
         
-        st.download_button(
-            label="💾 Baixar Backup Completo",
-            data=backup_json,
-            file_name=filename,
-            mime="application/json",
-            help="Salva todos os seus dados em arquivo JSON"
-        )
-        
-        # RESTAURAR BACKUP - Upload
-        st.markdown("### 📥 Restaurar Backup")
-        uploaded_file = st.file_uploader(
-            "Selecione arquivo de backup:",
-            type=['json'],
-            help="Selecione um arquivo .json de backup do BRIX"
-        )
-        
-        if uploaded_file is not None:
-            try:
-                backup_content = uploaded_file.read().decode('utf-8')
+        # Se ainda não conseguiu configurar automaticamente
+        if 'github_token_configurado' not in st.session_state:
+            # Verificar se é porque token no código não foi configurado
+            if not GITHUB_TOKEN_CONFIGURADO:
+                st.info("🔐 **Para Desenvolvedores:**")
+                st.markdown("""
+                **🛠️ Configuração necessária no código:**
                 
-                if st.button("🔄 Restaurar Dados", type="primary"):
-                    sucesso, mensagem = restaurar_backup_manual(backup_content)
-                    if sucesso:
-                        st.success(mensagem)
-                        st.rerun()
-                    else:
-                        st.error(mensagem)
-                        
-            except Exception as e:
-                st.error(f"❌ Erro ao ler arquivo: {str(e)}")
+                1. Cole seu token GitHub na variável:
+                ```python
+                GITHUB_TOKEN_CONFIGURADO = "ghp_seu_token_aqui"
+                ```
+                
+                2. Isso fará o sistema funcionar automaticamente em qualquer computador!
+                """)
+            else:
+                st.error("🔐 **Token configurado mas inválido**")
+                st.markdown("Verifique se o token GitHub está correto no código.")
+            
+            # Opção manual como fallback
+            with st.expander("⚙️ Configuração Manual (Emergência)", expanded=False):
+                st.markdown("""
+                **🔧 Se precisar configurar manualmente:**
+                1. Acesse: https://github.com/settings/tokens
+                2. Clique "Generate new token (classic)"  
+                3. Nome: "BRIX Backup"
+                4. Marque: ✅ repo
+                5. Cole o token abaixo:
+                """)
+                
+                token_input = st.text_input(
+                    "🔑 Token GitHub:", 
+                    type="password", 
+                    placeholder="ghp_emergencia_token...",
+                    help="Só use se necessário"
+                )
+                
+                if st.button("💾 Usar Token Manual") and token_input:
+                    with st.spinner("🔍 Testando token..."):
+                        if testar_token_github(token_input):
+                            salvar_token_persistente(token_input)
+                            st.session_state.github_token = token_input
+                            st.session_state.github_token_configurado = True
+                            st.success("✅ Configurado manualmente!")
+                            st.rerun()
+                        else:
+                            st.error("❌ Token inválido!")
+            
+            return
         
-        # INFORMAÇÕES IMPORTANTES
-        st.markdown("---")
-        st.warning("""
-        **⚠️ IMPORTANTE:**
-        - Faça backup ANTES de fechar o navegador
-        - Dados só persistem durante a sessão
-        - Para dados permanentes, use backup manual
-        """)
+        # SISTEMA CONFIGURADO E FUNCIONANDO
+        st.success("🔐 **GitHub:** Configurado automaticamente")
+        st.success("🤖 **Backup:** Sincronização ativa") 
+        st.success("💾 **Multi-PC:** Funciona em qualquer computador")
         
-        # Status de inicialização
-        if 'dados_inicializados' in st.session_state:
-            st.caption(f"Sistema iniciado: {st.session_state.dados_inicializados}")
+        # Token configurado - executar automação
+        executar_sistema_github()
+        
+        # CONTROLES APENAS PARA ADMIN
+        if st.session_state.usuario_info and st.session_state.usuario_info.get("tipo") == "admin":
+            st.markdown("---")
+            st.subheader("⚙️ Controles Admin")
+            
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                if st.button("📤 Backup", help="Backup manual"):
+                    executar_backup_github()
+            
+            with col2:
+                if st.button("🔄 Atualizar", help="Sincronizar agora"):
+                    st.session_state.backup_sincronizado = False
+                    st.rerun()
+            
+            # Status do último backup
+            if 'ultimo_backup' in st.session_state:
+                st.info(f"💾 Último backup: {st.session_state.ultimo_backup}")
+            
+            # Informações de configuração (só para admin)
+            with st.expander("🔧 Informações do Sistema"):
+                st.markdown(f"""
+                **🔐 Status da Configuração:**
+                - **Token no código:** {'✅ Configurado' if GITHUB_TOKEN_CONFIGURADO else '❌ Não configurado'}
+                - **Funcionamento:** {'✅ Automático' if GITHUB_TOKEN_CONFIGURADO else '⚠️ Manual necessário'}
+                - **Multi-PC:** {'✅ Sim' if GITHUB_TOKEN_CONFIGURADO else '❌ Não'}
+                """)
+                
+                if st.button("🔄 Reconfigurar Sistema"):
+                    if 'github_token_configurado' in st.session_state:
+                        del st.session_state.github_token_configurado
+                    if 'github_token' in st.session_state:
+                        del st.session_state.github_token
+                    st.rerun()
+        
+        else:
+            # PARA CLIENTES - INTERFACE LIMPA
+            st.markdown("---")
+            st.success("📊 Sistema funcionando automaticamente")
+            st.info("🔄 Dados sempre sincronizados")
+            
+            if st.button("🔄 Atualizar Dados"):
+                st.session_state.backup_sincronizado = False
+                st.rerun()
+        
+        # STATUS GERAL
+        if 'dados_restaurados' in st.session_state:
+            st.write(f"🕐 Última sincronização: {st.session_state.dados_restaurados}")
+        else:
+            st.write("🕐 Carregando dados...")
+
+def executar_sistema_github():
+    """Executa sincronização e backup automático do GitHub"""
+    GITHUB_TOKEN = st.session_state.github_token
+    GITHUB_REPO = "fabiomadalozzo/brix-backup"
+    GITHUB_FILE = "backup_brix.json"
+    GITHUB_API_URL = f"https://api.github.com/repos/{GITHUB_REPO}/contents/{GITHUB_FILE}"
+    
+    # SINCRONIZAÇÃO AUTOMÁTICA (primeira vez)
+    if 'backup_sincronizado' not in st.session_state:
+        try:
+            with st.spinner("🔄 Sincronizando dados..."):
+                import requests
+                import base64
+                
+                headers = {
+                    'Authorization': f'token {GITHUB_TOKEN}',
+                    'Accept': 'application/vnd.github.v3+json'
+                }
+                
+                response = requests.get(GITHUB_API_URL, headers=headers, timeout=10)
+                
+                if response.status_code == 200:
+                    file_data = response.json()
+                    content_base64 = file_data['content']
+                    content_decoded = base64.b64decode(content_base64).decode('utf-8')
+                    backup_data = json.loads(content_decoded)
+                    
+                    st.session_state.clientes_db = backup_data['clientes']
+                    st.session_state.usuarios_db = backup_data['usuarios']
+                    st.session_state.df_tracking = pd.DataFrame(backup_data['trackings'])
+                    st.session_state.dados_restaurados = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+                    
+                    st.success("✅ Dados sincronizados automaticamente!")
+                
+                st.session_state.backup_sincronizado = True
+                st.rerun()
+                
+        except Exception as e:
+            st.session_state.backup_sincronizado = True
+    
+    # BACKUP AUTOMÁTICO (só admin)
+    if st.session_state.usuario_info and st.session_state.usuario_info.get("tipo") == "admin":
+        dados_atuais = {
+            'clientes': len(st.session_state.clientes_db),
+            'usuarios': len(st.session_state.usuarios_db),
+            'trackings': len(st.session_state.df_tracking)
+        }
+        
+        if 'dados_anteriores' not in st.session_state:
+            st.session_state.dados_anteriores = dados_atuais
+        
+        if dados_atuais != st.session_state.dados_anteriores:
+            executar_backup_github()
+            st.session_state.dados_anteriores = dados_atuais
+
+def executar_backup_github():
+    """Executa backup no GitHub"""
+    try:
+        import requests
+        import base64
+        
+        GITHUB_TOKEN = st.session_state.github_token
+        GITHUB_REPO = "fabiomadalozzo/brix-backup"
+        GITHUB_FILE = "backup_brix.json"
+        GITHUB_API_URL = f"https://api.github.com/repos/{GITHUB_REPO}/contents/{GITHUB_FILE}"
+        
+        backup_data = {
+            'clientes': st.session_state.clientes_db,
+            'usuarios': st.session_state.usuarios_db,
+            'trackings': st.session_state.df_tracking.to_dict('records'),
+            'metadata': {
+                'data_backup': datetime.now().strftime("%d/%m/%Y %H:%M:%S"),
+                'versao': '2.3-MULTI-COMPUTADOR-AUTOMATICO'
+            }
+        }
+        
+        json_content = json.dumps(backup_data, ensure_ascii=False, indent=2)
+        content_base64 = base64.b64encode(json_content.encode('utf-8')).decode('utf-8')
+        
+        headers = {
+            'Authorization': f'token {GITHUB_TOKEN}',
+            'Accept': 'application/vnd.github.v3+json'
+        }
+        
+        get_response = requests.get(GITHUB_API_URL, headers=headers)
+        
+        github_data = {
+            'message': f'Backup BRIX - {datetime.now().strftime("%d/%m/%Y %H:%M:%S")}',
+            'content': content_base64
+        }
+        
+        if get_response.status_code == 200:
+            github_data['sha'] = get_response.json()['sha']
+        
+        response = requests.put(GITHUB_API_URL, json=github_data, headers=headers)
+        
+        if response.status_code in [200, 201]:
+            st.session_state.ultimo_backup = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+            st.success("✅ Backup realizado!")
+            return True
+        else:
+            st.error("❌ Erro no backup")
+            return False
+            
+    except Exception as e:
+        st.error(f"❌ Erro: {str(e)}")
+        return False
 
 def tela_login():
-    """Tela de login"""
+    """Tela de login - CORRIGIDA para mobile"""
     st.markdown("""
     <div class="main-header">
         <h1>🚢 BRIX LOGÍSTICA</h1>
@@ -1101,9 +1326,9 @@ def dashboard_principal():
                         
                         with col2:
                             saida = st.text_input("Saída Navio", placeholder="DD/MM/AAAA")
-                            previsao = st.text_input("Previsão Chegada Porto Brasileiro", placeholder="DD/MM/AAAA")
+                            previsao = st.text_input("Previsão Chegada Paranaguá", placeholder="DD/MM/AAAA")
                             canal_rfb = st.selectbox("Canal RFB", ['', 'VERDE', 'VERMELHO'])
-                            chegada = st.text_input("Chegada Porto Brasileiro", placeholder="DD/MM/AAAA")
+                            chegada = st.text_input("Chegada Paranaguá", placeholder="DD/MM/AAAA")
                         
                         if st.form_submit_button("📦 Adicionar Tracking", type="primary"):
                             if cliente_selecionado and container:
@@ -1113,10 +1338,10 @@ def dashboard_principal():
                                     'CARREGAMENTO': carregamento,
                                     'EMBARQUE NAVIO': embarque,
                                     'SAIDA NAVIO': saida,
-                                    'PREVISAO CHEGADA Porto Brasileiro': previsao,
-                                    'CHEGADA Porto Brasileiro': chegada,
+                                    'PREVISAO CHEGADA PARANAGUA': previsao,
+                                    'CHEGADA PARANAGUA': chegada,
                                     'CANAL RFB': canal_rfb,
-                                    'LIBERAÇAO Porto Brasileiro': '',
+                                    'LIBERAÇAO PARANAGUA': '',
                                     'CHEGADA CIUDAD DEL ESTE PY': '',
                                     'DESCARREGAMENTO': ''
                                 }
@@ -1198,7 +1423,7 @@ def dashboard_principal():
                 st.markdown("### 📅 Status dos Seus Containers")
                 for _, row in df_usuario.iterrows():
                     status_emoji = "🟢" if row['CANAL RFB'] == 'VERDE' else "🔴" if row['CANAL RFB'] == 'VERMELHO' else "⏳"
-                    previsao = row['PREVISAO CHEGADA Porto Brasileiro'] if row['PREVISAO CHEGADA Porto Brasileiro'] else "Não informado"
+                    previsao = row['PREVISAO CHEGADA PARANAGUA'] if row['PREVISAO CHEGADA PARANAGUA'] else "Não informado"
                     st.write(f"{status_emoji} **{row['CONTAINER']}** - Previsão: {previsao}")
     
     # Filtros
@@ -1289,11 +1514,11 @@ def dashboard_principal():
                     st.write(f"**📊 Status:** {row['CANAL RFB']}")
                     st.write(f"**📅 Carregamento:** {row['CARREGAMENTO']}")
                     st.write(f"**🚢 Embarque:** {row['EMBARQUE NAVIO']}")
-                    st.write(f"**📍 Previsão Porto Brasileiro:** {row['PREVISAO CHEGADA Porto Brasileiro']}")
+                    st.write(f"**📍 Previsão Paranaguá:** {row['PREVISAO CHEGADA PARANAGUA']}")
                 
                 with col2:
-                    st.write(f"**✅ Chegada Porto Brasileiro:** {row['CHEGADA Porto Brasileiro']}")
-                    st.write(f"**🔓 Liberação:** {row['LIBERAÇAO Porto Brasileiro']}")
+                    st.write(f"**✅ Chegada Paranaguá:** {row['CHEGADA PARANAGUA']}")
+                    st.write(f"**🔓 Liberação:** {row['LIBERAÇAO PARANAGUA']}")
                     st.write(f"**🚛 Chegada Ciudad del Este:** {row['CHEGADA CIUDAD DEL ESTE PY']}")
                     st.write(f"**📦 Descarregamento:** {row['DESCARREGAMENTO']}")
                 
@@ -1301,14 +1526,45 @@ def dashboard_principal():
 
         # OPÇÃO 2: Tabela simples (para quem prefere)
         if st.checkbox("📊 Ver como Tabela Tradicional"):
-            # Usar dataframe do Streamlit com estilo aplicado
-            df_styled = df_display.style.apply(colorir_linha, axis=1)
-            st.dataframe(df_styled, use_container_width=True)
+            # Criar tabela com contraste alto
+            html_table = """
+            <div style='overflow-x: auto; background-color: #ffffff; padding: 10px; border-radius: 5px;'>
+            <table style='width: 100%; border-collapse: collapse; font-size: 12px; background-color: #ffffff;'>
+            <thead>
+            <tr style='background-color: #f8f9fa;'>
+            """
+            
+            for col in df_display.columns:
+                html_table += f"<th style='border: 2px solid #000000; padding: 8px; text-align: left; color: #000000; font-weight: bold; background-color: #f8f9fa;'>{col}</th>"
+            
+            html_table += "</tr></thead><tbody>"
+            
+            for idx, row in df_display.iterrows():
+                html_table += "<tr>"
+                for col in df_display.columns:
+                    valor = str(row[col]) if pd.notna(row[col]) else ""
+                    
+                    if col == 'CANAL RFB':
+                        if 'VERDE' in valor:
+                            bg_color = "#d4edda"
+                        elif 'VERMELHO' in valor:
+                            bg_color = "#f8d7da"
+                        else:
+                            bg_color = "#fff3cd"
+                    else:
+                        bg_color = "#ffffff"
+                    
+                    html_table += f"<td style='border: 1px solid #000000; padding: 6px; background-color: {bg_color}; color: #000000; font-weight: 500;'>{valor}</td>"
+                html_table += "</tr>"
+            
+            html_table += "</tbody></table></div>"
+            st.markdown(html_table, unsafe_allow_html=True)
 
         # Legenda
         st.info("🟢 Verde = Liberado | 🔴 Vermelho = Inspeção | ⏳ Pendente = Aguardando")
         
-        # Download dos dados
+               
+        # Download dos dados (SEM DUPLICAÇÃO)
         csv = df_filtrado.to_csv(index=False)
         nome_arquivo = f"tracking_todos_{datetime.now().strftime('%Y%m%d')}.csv" if usuario_info["tipo"] == "admin" else f"tracking_{usuario_info['nome'].replace(' ', '_')}_{datetime.now().strftime('%Y%m%d')}.csv"
         label_download = "💾 Baixar Todos os Dados (CSV)" if usuario_info["tipo"] == "admin" else "💾 Baixar Seus Dados (CSV)"
@@ -1336,12 +1592,12 @@ def dashboard_principal():
                             carregamento = st.text_input("Carregamento", placeholder="DD/MM/AAAA")
                             embarque = st.text_input("Embarque Navio", placeholder="DD/MM/AAAA")
                             saida = st.text_input("Saída Navio", placeholder="DD/MM/AAAA")
-                            previsao = st.text_input("Previsão Chegada Porto Brasileiro", placeholder="DD/MM/AAAA")
+                            previsao = st.text_input("Previsão Chegada Paranaguá", placeholder="DD/MM/AAAA")
                         
                         with col2:
-                            chegada = st.text_input("Chegada Porto Brasileiro", placeholder="DD/MM/AAAA")
+                            chegada = st.text_input("Chegada Paranaguá", placeholder="DD/MM/AAAA")
                             canal_rfb = st.selectbox("Canal RFB", ['', 'VERDE', 'VERMELHO'])
-                            liberacao = st.text_input("Liberação Porto Brasileiro", placeholder="DD/MM/AAAA")
+                            liberacao = st.text_input("Liberação Paranaguá", placeholder="DD/MM/AAAA")
                             chegada_py = st.text_input("Chegada Ciudad del Este PY", placeholder="DD/MM/AAAA")
                             descarregamento = st.text_input("Descarregamento", placeholder="DD/MM/AAAA")
                         
@@ -1357,10 +1613,10 @@ def dashboard_principal():
                                     'CARREGAMENTO': carregamento,
                                     'EMBARQUE NAVIO': embarque,
                                     'SAIDA NAVIO': saida,
-                                    'PREVISAO CHEGADA Porto Brasileiro': previsao,
-                                    'CHEGADA Porto Brasileiro': chegada,
+                                    'PREVISAO CHEGADA PARANAGUA': previsao,
+                                    'CHEGADA PARANAGUA': chegada,
                                     'CANAL RFB': canal_rfb,
-                                    'LIBERAÇAO Porto Brasileiro': liberacao,
+                                    'LIBERAÇAO PARANAGUA': liberacao,
                                     'CHEGADA CIUDAD DEL ESTE PY': chegada_py,
                                     'DESCARREGAMENTO': descarregamento
                                 }
@@ -1404,13 +1660,13 @@ def dashboard_principal():
                                 edit_carregamento = st.text_input("Carregamento", value=registro['CARREGAMENTO'])
                                 edit_embarque = st.text_input("Embarque Navio", value=registro['EMBARQUE NAVIO'])
                                 edit_saida = st.text_input("Saída Navio", value=registro['SAIDA NAVIO'])
-                                edit_previsao = st.text_input("Previsão Chegada Porto Brasileiro", value=registro['PREVISAO CHEGADA Porto Brasileiro'])
+                                edit_previsao = st.text_input("Previsão Chegada Paranaguá", value=registro['PREVISAO CHEGADA PARANAGUA'])
                             
                             with col2:
-                                edit_chegada = st.text_input("Chegada Porto Brasileiro", value=registro['CHEGADA Porto Brasileiro'])
+                                edit_chegada = st.text_input("Chegada Paranaguá", value=registro['CHEGADA PARANAGUA'])
                                 edit_canal = st.selectbox("Canal RFB", ['', 'VERDE', 'VERMELHO'], 
                                                         index=['', 'VERDE', 'VERMELHO'].index(registro['CANAL RFB']) if registro['CANAL RFB'] in ['', 'VERDE', 'VERMELHO'] else 0)
-                                edit_liberacao = st.text_input("Liberação Porto Brasileiro", value=registro['LIBERAÇAO Porto Brasileiro'])
+                                edit_liberacao = st.text_input("Liberação Paranaguá", value=registro['LIBERAÇAO PARANAGUA'])
                                 edit_chegada_py = st.text_input("Chegada Ciudad del Este PY", value=registro['CHEGADA CIUDAD DEL ESTE PY'])
                                 edit_descarregamento = st.text_input("Descarregamento", value=registro['DESCARREGAMENTO'])
                             
@@ -1443,9 +1699,9 @@ def dashboard_principal():
             with st.expander("Ver Containers no Canal Vermelho"):
                 for _, row in containers_vermelho.iterrows():
                     if usuario_info["tipo"] == "admin":
-                        st.write(f"🔴 **{row['CLIENTE']}** - Container: {row['CONTAINER']} - Previsão: {row['PREVISAO CHEGADA Porto Brasileiro']}")
+                        st.write(f"🔴 **{row['CLIENTE']}** - Container: {row['CONTAINER']} - Previsão: {row['PREVISAO CHEGADA PARANAGUA']}")
                     else:
-                        st.write(f"🔴 **Container:** {row['CONTAINER']} - **Previsão:** {row['PREVISAO CHEGADA Porto Brasileiro']}")
+                        st.write(f"🔴 **Container:** {row['CONTAINER']} - **Previsão:** {row['PREVISAO CHEGADA PARANAGUA']}")
 
 def main():
     """Função principal da aplicação"""
