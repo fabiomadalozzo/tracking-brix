@@ -397,7 +397,7 @@ def gerar_senha_temporaria():
     return ''.join(random.choices(string.ascii_lowercase + string.digits, k=8))
 
 def sidebar_backup_system():
-    """Sistema de backup na sidebar - MOBILE FRIENDLY"""
+    """Sistema de backup na sidebar - SINCRONIZAÇÃO PARA TODOS"""
     with st.sidebar:
         st.markdown("---")
         st.subheader("💾 Dados Atuais")
@@ -407,162 +407,160 @@ def sidebar_backup_system():
         st.write(f"👥 Usuários: {len(st.session_state.usuarios_db)}")
         st.write(f"📦 Trackings: {len(st.session_state.df_tracking)}")
         
-        # Sistema automático com Dropbox (APENAS ADMIN)
-        sistema_backup_automatico()
-        
-        # Backup manual simplificado (APENAS ADMIN)
-        if st.session_state.usuario_info and st.session_state.usuario_info.get("tipo") == "admin":
-            st.markdown("---")
-            st.subheader("📱 Backup Manual")
-            
-            # Download sempre disponível
-            if st.button("📤 Gerar Backup", help="Cria arquivo para download"):
-                backup_json = criar_backup_manual()
-                nome_arquivo = f"backup_brix_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
-                
-                st.download_button(
-                    label="⬇️ Baixar JSON",
-                    data=backup_json,
-                    file_name=nome_arquivo,
-                    mime="application/json",
-                    key="download_backup"
-                )
-                st.success("✅ Backup criado!")
-            
-            # Restaurar por texto (alternativa mobile)
-            with st.expander("📥 Restaurar por Texto"):
-                st.info("💡 **Para mobile:** Cole o conteúdo do arquivo JSON aqui")
-                
-                json_text = st.text_area(
-                    "Cole o JSON do backup:",
-                    height=100,
-                    placeholder='{"clientes": {...}, "usuarios": {...}, "trackings": [...]}'
-                )
-                
-                if st.button("🔄 Restaurar Dados", type="secondary"):
-                    if json_text.strip():
-                        try:
-                            backup_data = json.loads(json_text)
-                            
-                            # Validar estrutura
-                            if not all(key in backup_data for key in ['clientes', 'usuarios', 'trackings']):
-                                st.error("❌ JSON inválido! Verifique a estrutura.")
-                            else:
-                                # Restaurar dados
-                                st.session_state.clientes_db = backup_data['clientes']
-                                st.session_state.usuarios_db = backup_data['usuarios']
-                                st.session_state.df_tracking = pd.DataFrame(backup_data['trackings'])
-                                st.session_state.dados_restaurados = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
-                                
-                                st.success("✅ Dados restaurados com sucesso!")
-                                st.rerun()
-                                
-                        except json.JSONDecodeError:
-                            st.error("❌ JSON inválido! Verifique a formatação.")
-                        except Exception as e:
-                            st.error(f"❌ Erro: {str(e)}")
-                    else:
-                        st.warning("⚠️ Cole o conteúdo JSON primeiro!")
-            
-            # Status da última operação
-            if 'dados_restaurados' in st.session_state:
-                st.success(f"🕐 Última operação: {st.session_state.dados_restaurados}")
-            
-def sistema_backup_automatico():
-    """Sistema de backup automático com Dropbox integrado - APENAS PARA ADMIN"""
-    
-    # Verificar se é admin
-    if not st.session_state.usuario_info or st.session_state.usuario_info.get("tipo") != "admin":
-        return  # Não mostra nada para clientes
-    
-    with st.sidebar:
-        st.markdown("---")
-        st.subheader("☁️ Sincronização Dropbox")
-        
-        # URL pré-configurada do seu Dropbox (FUNCIONA EM QUALQUER COMPUTADOR)
-        DROPBOX_URL = "https://www.dropbox.com/scl/fi/x9d5wt35tsprq455wc0yg/backup_brix.json?rlkey=3t9imaxreqpky4upals7z5735&dl=1"
-        
-        # Botões de sincronização
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            if st.button("📥 Sincronizar", type="primary", help="Baixa dados do Dropbox"):
-                try:
-                    with st.spinner("🔄 Sincronizando..."):
-                        import requests
-                        response = requests.get(DROPBOX_URL, timeout=15)
+        # SINCRONIZAÇÃO AUTOMÁTICA PARA TODOS (admin e clientes)
+        if 'backup_sincronizado' not in st.session_state:
+            try:
+                with st.spinner("🔄 Carregando dados atualizados..."):
+                    import requests
+                    import base64
+                    
+                    # Configurações do GitHub
+                    GITHUB_TOKEN = "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"
+                    GITHUB_REPO = "fabiomadalozzo/brix-backup"
+                    GITHUB_FILE = "backup_brix.json"
+                    GITHUB_API_URL = f"https://api.github.com/repos/{GITHUB_REPO}/contents/{GITHUB_FILE}"
+                    
+                    headers = {
+                        'Authorization': f'token {GITHUB_TOKEN}',
+                        'Accept': 'application/vnd.github.v3+json'
+                    }
+                    
+                    response = requests.get(GITHUB_API_URL, headers=headers, timeout=10)
+                    
+                    if response.status_code == 200:
+                        file_data = response.json()
+                        content_base64 = file_data['content']
+                        content_decoded = base64.b64decode(content_base64).decode('utf-8')
+                        backup_data = json.loads(content_decoded)
                         
-                        if response.status_code == 200:
-                            backup_data = response.json()
-                            
-                            # Restaurar dados
-                            st.session_state.clientes_db = backup_data['clientes']
-                            st.session_state.usuarios_db = backup_data['usuarios']
-                            st.session_state.df_tracking = pd.DataFrame(backup_data['trackings'])
-                            st.session_state.dados_restaurados = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
-                            
-                            st.success("✅ Dados sincronizados do Dropbox!")
-                            st.rerun()
-                        else:
-                            st.error(f"❌ Erro HTTP: {response.status_code}")
-                            
-                except requests.exceptions.RequestException as e:
-                    st.error("❌ Erro de conexão. Verifique sua internet ou tente novamente.")
-                    st.info("💡 Dica: Aguarde alguns segundos e clique em 'Sincronizar' novamente")
-                except json.JSONDecodeError:
-                    st.error("❌ Arquivo JSON inválido no Dropbox.")
-                except Exception as e:
-                    st.error(f"❌ Erro: {str(e)}")
+                        # Restaurar dados automaticamente PARA TODOS
+                        st.session_state.clientes_db = backup_data['clientes']
+                        st.session_state.usuarios_db = backup_data['usuarios']
+                        st.session_state.df_tracking = pd.DataFrame(backup_data['trackings'])
+                        st.session_state.dados_restaurados = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+                        st.session_state.backup_sincronizado = True
+                        
+                        st.success("✅ Dados atualizados!")
+                        st.rerun()
+                    else:
+                        st.session_state.backup_sincronizado = True
+                        
+            except Exception as e:
+                st.session_state.backup_sincronizado = True
+                if st.session_state.usuario_info.get("tipo") == "admin":
+                    st.warning("⚠️ Erro ao carregar dados atualizados")
         
-        with col2:
-            if st.button("📤 Backup", help="Cria backup para atualizar Dropbox"):
-                backup_json = criar_backup_manual()
-                nome_arquivo = "backup_brix.json"
-                
-                st.download_button(
-                    label="⬇️ Baixar",
-                    data=backup_json,
-                    file_name=nome_arquivo,
-                    mime="application/json",
-                    help="Substitua o arquivo no Dropbox"
-                )
-                st.info("💡 Substitua o arquivo 'backup_brix.json' na sua pasta do Dropbox")
-        
-        # Status da última sincronização
-        if 'dados_restaurados' in st.session_state:
-            st.success(f"🕐 Última sync: {st.session_state.dados_restaurados}")
-        
-        # Instruções simplificadas - SEM CAMINHO ESPECÍFICO
-        with st.expander("📋 Como funciona"):
-            st.markdown("""
-            **🔄 Para sincronizar dados:**
-            1. **📥 Sincronizar** - baixa dados do Dropbox automaticamente
-            2. **📤 Backup** - cria arquivo para subir no Dropbox
+        # SISTEMA DE BACKUP COMPLETO (APENAS ADMIN)
+        if st.session_state.usuario_info and st.session_state.usuario_info.get("tipo") == "admin":
+            sistema_backup_automatico_admin()
+        else:
+            # PARA CLIENTES: Só mostrar status
+            st.markdown("---")
+            st.subheader("📊 Seus Dados")
+            st.success("✅ Dados sempre atualizados")
             
-            **📂 Onde encontrar o arquivo:**
-            - Abra sua pasta do Dropbox
-            - Procure a pasta: `tracking-brix`
-            - Arquivo: `backup_brix.json`
+            if 'dados_restaurados' in st.session_state:
+                st.info(f"🕐 Última atualização: {st.session_state.dados_restaurados}")
             
-            **💡 Funciona em qualquer computador!**
-            """)
-        
-        # Informações do arquivo atual
-        st.markdown("### 📄 Sistema de Backup:")
-        st.write("☁️ **Sincronização:** Automática via Dropbox")
-        st.write("🌐 **Multi-dispositivo:** Funciona em qualquer PC")
-        st.write("🔄 **Atualização:** Manual (faça backup após mudanças)")
-        
-        # Status de conectividade
+            # Botão manual de atualização para clientes
+            if st.button("🔄 Atualizar Dados", help="Buscar dados mais recentes"):
+                st.session_state.backup_sincronizado = False  # Força nova sincronização
+                st.rerun()
+
+def sistema_backup_automatico_admin():
+    """Sistema de backup completo APENAS PARA ADMIN"""
+    
+    st.markdown("---")
+    st.subheader("⚙️ Backup Automático (Admin)")
+    
+    # Configurações do GitHub
+    GITHUB_TOKEN = "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"
+    GITHUB_REPO = "fabiomadalozzo/brix-backup"
+    GITHUB_FILE = "backup_brix.json"
+    GITHUB_API_URL = f"https://api.github.com/repos/{GITHUB_REPO}/contents/{GITHUB_FILE}"
+    
+    # FUNÇÃO DE SALVAMENTO AUTOMÁTICO
+    def salvar_automaticamente():
+        """Salva dados automaticamente no GitHub"""
         try:
             import requests
-            response = requests.head(DROPBOX_URL, timeout=5)
-            if response.status_code == 200:
-                st.success("✅ Conectado ao Dropbox")
+            import base64
+            
+            backup_data = {
+                'clientes': st.session_state.clientes_db,
+                'usuarios': st.session_state.usuarios_db,
+                'trackings': st.session_state.df_tracking.to_dict('records'),
+                'metadata': {
+                    'data_backup': datetime.now().strftime("%d/%m/%Y %H:%M:%S"),
+                    'versao': '2.0',
+                    'total_clientes': len(st.session_state.clientes_db),
+                    'total_usuarios': len(st.session_state.usuarios_db),
+                    'total_trackings': len(st.session_state.df_tracking)
+                }
+            }
+            
+            json_content = json.dumps(backup_data, ensure_ascii=False, indent=2)
+            content_base64 = base64.b64encode(json_content.encode('utf-8')).decode('utf-8')
+            
+            headers = {
+                'Authorization': f'token {GITHUB_TOKEN}',
+                'Accept': 'application/vnd.github.v3+json'
+            }
+            
+            # Pegar SHA do arquivo atual
+            get_response = requests.get(GITHUB_API_URL, headers=headers)
+            
+            github_data = {
+                'message': f'Backup automático - {datetime.now().strftime("%d/%m/%Y %H:%M:%S")}',
+                'content': content_base64
+            }
+            
+            if get_response.status_code == 200:
+                github_data['sha'] = get_response.json()['sha']
+            
+            response = requests.put(GITHUB_API_URL, json=github_data, headers=headers, timeout=10)
+            
+            if response.status_code in [200, 201]:
+                st.session_state.ultimo_backup = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+                return True
+            return False
+            
+        except Exception as e:
+            return False
+    
+    # EXECUTAR SALVAMENTO AUTOMÁTICO A CADA MUDANÇA
+    dados_atuais = {
+        'clientes': len(st.session_state.clientes_db),
+        'usuarios': len(st.session_state.usuarios_db),
+        'trackings': len(st.session_state.df_tracking)
+    }
+    
+    if 'dados_anteriores' not in st.session_state:
+        st.session_state.dados_anteriores = dados_atuais
+    
+    # Se dados mudaram, salvar automaticamente
+    if dados_atuais != st.session_state.dados_anteriores:
+        with st.spinner("💾 Backup automático..."):
+            if salvar_automaticamente():
+                st.success("✅ Backup realizado!")
             else:
-                st.warning("⚠️ Problema na conexão")
-        except:
-            st.error("❌ Sem conexão com Dropbox")
+                st.warning("⚠️ Erro no backup")
+        
+        st.session_state.dados_anteriores = dados_atuais
+    
+    # STATUS ADMIN
+    st.success("🤖 **Backup Automático:** ATIVO")
+    
+    if 'ultimo_backup' in st.session_state:
+        st.write(f"💾 **Último backup:** {st.session_state.ultimo_backup}")
+    
+    # Botão manual de backup
+    if st.button("📤 Backup Manual", help="Forçar backup agora"):
+        with st.spinner("💾 Salvando..."):
+            if salvar_automaticamente():
+                st.success("✅ Backup manual realizado!")
+            else:
+                st.error("❌ Erro no backup manual")
         
 def tela_login():
     """Tela de login - CORRIGIDA para mobile"""
