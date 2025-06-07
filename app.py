@@ -182,7 +182,7 @@ st.markdown("""
 
 # 🔐 CONFIGURAÇÃO DO TOKEN GITHUB (APENAS VOCÊ PRECISA ALTERAR)
 # Cole seu token GitHub aqui - será usado automaticamente em qualquer computador
-GITHUB_TOKEN_CONFIGURADO = ""  # Cole seu token aqui: ghp_xxxxxxxxxx
+GITHUB_TOKEN_CONFIGURADO = "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"  # Cole seu token aqui: ghp_xxxxxxxxxx
 
 # FUNÇÕES PARA GERENCIAR TOKEN
 def obter_token_github():
