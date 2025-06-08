@@ -1402,47 +1402,29 @@ def dashboard_principal():
                 st.markdown("---")
 
         # Opção de tabela tradicional
-        if st.checkbox("📊 Ver como Tabela Tradicional"):
-            st.markdown("### 📊 Tabela Completa de Trackings")
+        st.markdown("### 📊 Dados dos Trackings")
+        st.write(f"**Registros encontrados:** {len(df_filtrado)}")
+        
+        if not df_filtrado.empty:
+            # Criar uma versão simplificada dos dados para exibição
+            df_display_simples = df_filtrado.copy()
             
-            # Forçar exibição simples primeiro
-            st.write(f"**Total de registros:** {len(df_filtrado)}")
+            # Renomear colunas para nomes mais curtos se necessário
+            df_display_simples = df_display_simples.rename(columns={
+                'PREVISAO CHEGADA PORTO DESTINO': 'PREVISAO',
+                'CHEGADA PORTO DESTINO': 'CHEGADA',
+                'LIBERAÇAO PORTO DESTINO': 'LIBERACAO',
+                'CHEGADA CIUDAD DEL ESTE PY': 'CHEGADA PY'
+            })
             
-            # Método 1: Tabela simples sem styling
-            try:
-                st.dataframe(
-                    df_filtrado,
-                    use_container_width=True,
-                    hide_index=True,
-                    column_config={
-                        "CLIENTE": st.column_config.TextColumn("Cliente", width="medium"),
-                        "CONTAINER": st.column_config.TextColumn("Container", width="medium"),
-                        "CANAL RFB": st.column_config.TextColumn("Canal RFB", width="small"),
-                        "CARREGAMENTO": st.column_config.TextColumn("Carregamento", width="small"),
-                        "EMBARQUE NAVIO": st.column_config.TextColumn("Embarque", width="small"),
-                        "PREVISAO CHEGADA PORTO DESTINO": st.column_config.TextColumn("Previsão", width="small"),
-                        "CHEGADA PORTO DESTINO": st.column_config.TextColumn("Chegada", width="small"),
-                        "STATUS_FINAL": st.column_config.TextColumn("Status Final", width="medium")
-                    }
-                )
-            except Exception as e:
-                st.error(f"Erro ao exibir tabela: {e}")
-                
-                # Método 2: Fallback - Mostrar dados como texto
-                st.write("**Dados em formato texto:**")
-                for idx, row in df_filtrado.iterrows():
-                    with st.container():
-                        col1, col2, col3 = st.columns(3)
-                        with col1:
-                            st.write(f"**Cliente:** {row.get('CLIENTE', 'N/A')}")
-                            st.write(f"**Container:** {row.get('CONTAINER', 'N/A')}")
-                        with col2:
-                            st.write(f"**Canal RFB:** {row.get('CANAL RFB', 'N/A')}")
-                            st.write(f"**Carregamento:** {row.get('CARREGAMENTO', 'N/A')}")
-                        with col3:
-                            st.write(f"**Previsão:** {row.get('PREVISAO CHEGADA PORTO DESTINO', 'N/A')}")
-                            st.write(f"**Status:** {row.get('STATUS_FINAL', 'N/A')}")
-                        st.divider()
+            # Exibir com configuração simples
+            st.dataframe(
+                df_display_simples,
+                use_container_width=True,
+                hide_index=True
+            )
+        else:
+            st.info("🔍 Nenhum registro encontrado com os filtros aplicados.")
 
         # Legenda
         st.info("🟢 Verde = Liberado | 🔴 Vermelho = Inspeção | ⏳ Pendente = Aguardando")
