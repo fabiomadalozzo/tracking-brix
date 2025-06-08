@@ -1546,9 +1546,9 @@ def dashboard_principal():
             with st.expander("Ver Containers no Canal Vermelho"):
                 for _, row in containers_vermelho.iterrows():
                     if usuario_info["tipo"] == "admin":
-                        st.write(f"🔴 **{row['CLIENTE']}** - Container: {row['CONTAINER']} - Previsão: {row['PREVISAO CHEGADA PORTO DESTINO']}")
+                        st.write(f"🔴 **{row.get('CLIENTE', 'N/A')}** - Container: {row.get('CONTAINER', 'N/A')} - Previsão: {row.get('PREVISAO CHEGADA PORTO DESTINO', 'Não informado')}")
                     else:
-                        st.write(f"🔴 **Container:** {row['CONTAINER']} - **Previsão:** {row['PREVISAO CHEGADA PORTO DESTINO']}")
+                        st.write(f"🔴 **Container:** {row.get('CONTAINER', 'N/A')} - **Previsão:** {row.get('PREVISAO CHEGADA PORTO DESTINO', 'Não informado')}")
 
 def main():
     """Função principal da aplicação"""
