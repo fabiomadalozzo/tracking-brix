@@ -1403,8 +1403,46 @@ def dashboard_principal():
 
         # Opção de tabela tradicional
         if st.checkbox("📊 Ver como Tabela Tradicional"):
-            df_styled = df_display.style.apply(colorir_linha, axis=1)
-            st.dataframe(df_styled, use_container_width=True)
+            st.markdown("### 📊 Tabela Completa de Trackings")
+            
+            # Forçar exibição simples primeiro
+            st.write(f"**Total de registros:** {len(df_filtrado)}")
+            
+            # Método 1: Tabela simples sem styling
+            try:
+                st.dataframe(
+                    df_filtrado,
+                    use_container_width=True,
+                    hide_index=True,
+                    column_config={
+                        "CLIENTE": st.column_config.TextColumn("Cliente", width="medium"),
+                        "CONTAINER": st.column_config.TextColumn("Container", width="medium"),
+                        "CANAL RFB": st.column_config.TextColumn("Canal RFB", width="small"),
+                        "CARREGAMENTO": st.column_config.TextColumn("Carregamento", width="small"),
+                        "EMBARQUE NAVIO": st.column_config.TextColumn("Embarque", width="small"),
+                        "PREVISAO CHEGADA PORTO DESTINO": st.column_config.TextColumn("Previsão", width="small"),
+                        "CHEGADA PORTO DESTINO": st.column_config.TextColumn("Chegada", width="small"),
+                        "STATUS_FINAL": st.column_config.TextColumn("Status Final", width="medium")
+                    }
+                )
+            except Exception as e:
+                st.error(f"Erro ao exibir tabela: {e}")
+                
+                # Método 2: Fallback - Mostrar dados como texto
+                st.write("**Dados em formato texto:**")
+                for idx, row in df_filtrado.iterrows():
+                    with st.container():
+                        col1, col2, col3 = st.columns(3)
+                        with col1:
+                            st.write(f"**Cliente:** {row.get('CLIENTE', 'N/A')}")
+                            st.write(f"**Container:** {row.get('CONTAINER', 'N/A')}")
+                        with col2:
+                            st.write(f"**Canal RFB:** {row.get('CANAL RFB', 'N/A')}")
+                            st.write(f"**Carregamento:** {row.get('CARREGAMENTO', 'N/A')}")
+                        with col3:
+                            st.write(f"**Previsão:** {row.get('PREVISAO CHEGADA PORTO DESTINO', 'N/A')}")
+                            st.write(f"**Status:** {row.get('STATUS_FINAL', 'N/A')}")
+                        st.divider()
 
         # Legenda
         st.info("🟢 Verde = Liberado | 🔴 Vermelho = Inspeção | ⏳ Pendente = Aguardando")
