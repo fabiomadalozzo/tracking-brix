@@ -320,8 +320,8 @@ def inicializar_sistema():
                 'CARREGAMENTO': '15/05/2025',
                 'EMBARQUE NAVIO': '18/05/2025',
                 'SAIDA NAVIO': '20/05/2025',
-                'PREVISAO CHEGADA PORTO DESTINO': '25/05/2025',
-                'CHEGADA PORTO DESTINO': '24/05/2025',
+                'PREVISAO CHEGADA PORTO DESTINO': '25/05/2025',    # ✅ Correto
+                'CHEGADA PORTO DESTINO': '24/05/2025',             # ✅ Correto
                 'CANAL RFB': 'VERDE',
                 'LIBERAÇAO PORTO DESTINO': '24/05/2025',
                 'CHEGADA CIUDAD DEL ESTE PY': '26/05/2025',
@@ -1361,10 +1361,10 @@ def dashboard_principal():
                     st.write(f"**📊 Status:** {row['CANAL RFB']}")
                     st.write(f"**📅 Carregamento:** {row['CARREGAMENTO']}")
                     st.write(f"**🚢 Embarque:** {row['EMBARQUE NAVIO']}")
-                    st.write(f"**📍 Previsão Porto Destino:** {row['PREVISAO CHEGADA PARANAGUA']}")
+                    st.write(f"**📍 Previsão Porto Destino:** {row.get('PREVISAO CHEGADA PORTO DESTINO', 'Não informado')}")
                 
                 with col2:
-                    st.write(f"**✅ Chegada Porto Destino:** {row['CHEGADA Porto Destino']}")
+                    st.write(f"**✅ Chegada Porto Destino:** {row.get('CHEGADA PORTO DESTINO', 'Não informado')}")
                     st.write(f"**🔓 Liberação:** {row['LIBERAÇAO PORTO DESTINO']}")
                     st.write(f"**🚛 Chegada Ciudad del Este:** {row['CHEGADA CIUDAD DEL ESTE PY']}")
                     st.write(f"**📦 Descarregamento:** {row['DESCARREGAMENTO']}")
