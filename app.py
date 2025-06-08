@@ -343,7 +343,7 @@ def inicializar_sistema():
                 'CANAL RFB': '',
                 'LIBERAÇAO PORTO DESTINO': '',
                 'CHEGADA CIUDAD DEL ESTE PY': '',
-                'DESCARREGAMENTO': ''
+                'DESCARREGAMENTO': '',
                 'STATUS_FINAL': ''  # ✅ ADICIONAR ESTA LINHA
             },
             {
@@ -357,7 +357,7 @@ def inicializar_sistema():
                 'CANAL RFB': 'VERMELHO',
                 'LIBERAÇAO PORTO DESTINO': '',
                 'CHEGADA CIUDAD DE LESTE PY': '',
-                'DESCARREGAMENTO': ''
+                'DESCARREGAMENTO': '',
                 'STATUS_FINAL': ''  # ✅ ADICIONAR ESTA LINHA
             }
         ])
