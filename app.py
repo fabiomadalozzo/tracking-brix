@@ -1537,19 +1537,31 @@ def dashboard_principal():
                                 edit_status_final = st.selectbox("Status Final:", STATUS_FINAIS, 
                                                                 index=STATUS_FINAIS.index(registro.get('STATUS_FINAL', '')) if registro.get('STATUS_FINAL', '') in STATUS_FINAIS else 0)
                                 
-                            submitted_edit = st.form_submit_button("💾 Salvar Alterações", type="primary")
-                            
-                            if submitted_edit:
+                            if st.form_submit_button("💾 Salvar Alterações", type="primary"):
                                 if not edit_cliente or not edit_container:
                                     st.error("❌ Cliente e Container são obrigatórios!")
                                 else:
-                                    st.session_state.df_tracking.loc[idx_selecionado] = [
-                                        edit_cliente, edit_container, edit_carregamento, edit_embarque,
-                                        edit_saida, edit_previsao, edit_chegada, edit_canal,
-                                        edit_liberacao, edit_chegada_py, edit_descarregamento
-                                    ]
+                                    # MÉTODO SEGURO: Atualizar coluna por coluna
+                                    st.session_state.df_tracking.loc[idx_selecionado, 'CLIENTE'] = edit_cliente
+                                    st.session_state.df_tracking.loc[idx_selecionado, 'CONTAINER'] = edit_container
+                                    st.session_state.df_tracking.loc[idx_selecionado, 'CARREGAMENTO'] = edit_carregamento
+                                    st.session_state.df_tracking.loc[idx_selecionado, 'EMBARQUE NAVIO'] = edit_embarque
+                                    st.session_state.df_tracking.loc[idx_selecionado, 'SAIDA NAVIO'] = edit_saida
+                                    st.session_state.df_tracking.loc[idx_selecionado, 'PREVISAO CHEGADA PORTO DESTINO'] = edit_previsao
+                                    st.session_state.df_tracking.loc[idx_selecionado, 'CHEGADA PORTO DESTINO'] = edit_chegada
+                                    st.session_state.df_tracking.loc[idx_selecionado, 'CANAL RFB'] = edit_canal
+                                    st.session_state.df_tracking.loc[idx_selecionado, 'LIBERAÇAO PORTO DESTINO'] = edit_liberacao
+                                    st.session_state.df_tracking.loc[idx_selecionado, 'CHEGADA CIUDAD DEL ESTE PY'] = edit_chegada_py
+                                    st.session_state.df_tracking.loc[idx_selecionado, 'DESCARREGAMENTO'] = edit_descarregamento
+                                    
+                                    # Adicionar STATUS_FINAL se a variável existir
+                                    if 'edit_status_final' in locals():
+                                        st.session_state.df_tracking.loc[idx_selecionado, 'STATUS_FINAL'] = edit_status_final
+                                    
                                     st.success("✅ Registro atualizado!")
                                     st.rerun()
+                                
+        
     else:
         st.info("🔍 Nenhum registro encontrado com os filtros aplicados.")
     
