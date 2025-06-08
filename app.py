@@ -194,17 +194,20 @@ DADOS_EMPRESA = {
     'cnpj': '31.247.532/0001-51'
 }
 
-# Colunas do sistema
-COLUNAS = [
-    'CLIENTE', 'CONTAINER', 'CARREGAMENTO', 'EMBARQUE NAVIO',
-    'SAIDA NAVIO', 'PREVISAO CHEGADA PORTO DESTINO', 'CHEGADA PORTO DESTINO',
-    'CANAL RFB', 'LIBERAÇAO PORTO DESTINO', 'CHEGADA CIUDAD DEL ESTE PY',
-    'DESCARREGAMENTO', 'STATUS_FINAL'
-]
-
-for coluna in colunas_necessarias:
-    if coluna not in st.session_state.df_tracking.columns:
-        st.session_state.df_tracking[coluna] = ''
+    # DADOS PADRÃO PARA TRACKINGS
+    st.session_state.df_tracking = pd.DataFrame([...])
+    
+    # ✅ ADICIONAR AQUI:
+    colunas_necessarias = [
+        'CLIENTE', 'CONTAINER', 'CARREGAMENTO', 'EMBARQUE NAVIO',
+        'SAIDA NAVIO', 'PREVISAO CHEGADA PORTO DESTINO', 'CHEGADA PORTO DESTINO',
+        'CANAL RFB', 'LIBERAÇAO PORTO DESTINO', 'CHEGADA CIUDAD DEL ESTE PY',
+        'DESCARREGAMENTO', 'STATUS_FINAL'
+    ]
+    
+    for coluna in colunas_necessarias:
+        if coluna not in st.session_state.df_tracking.columns:
+            st.session_state.df_tracking[coluna] = ''
         
 # ADICIONAR AQUI:
 STATUS_FINAIS = [
