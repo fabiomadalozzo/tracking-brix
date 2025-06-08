@@ -1358,16 +1358,16 @@ def dashboard_principal():
                 col1, col2 = st.columns(2)
                 
                 with col1:
-                    st.write(f"**📊 Status:** {row['CANAL RFB']}")
-                    st.write(f"**📅 Carregamento:** {row['CARREGAMENTO']}")
-                    st.write(f"**🚢 Embarque:** {row['EMBARQUE NAVIO']}")
+                    st.write(f"**📊 Status:** {row.get('CANAL RFB', 'Pendente')}")
+                    st.write(f"**📅 Carregamento:** {row.get('CARREGAMENTO', 'Não informado')}")
+                    st.write(f"**🚢 Embarque:** {row.get('EMBARQUE NAVIO', 'Não informado')}")
                     st.write(f"**📍 Previsão Porto Destino:** {row.get('PREVISAO CHEGADA PORTO DESTINO', 'Não informado')}")
                 
                 with col2:
                     st.write(f"**✅ Chegada Porto Destino:** {row.get('CHEGADA PORTO DESTINO', 'Não informado')}")
-                    st.write(f"**🔓 Liberação:** {row['LIBERAÇAO PORTO DESTINO']}")
-                    st.write(f"**🚛 Chegada Ciudad del Este:** {row['CHEGADA CIUDAD DEL ESTE PY']}")
-                    st.write(f"**📦 Descarregamento:** {row['DESCARREGAMENTO']}")
+                    st.write(f"**🔓 Liberação:** {row.get('LIBERAÇAO PORTO DESTINO', 'Não informado')}")
+                    st.write(f"**🚛 Chegada Ciudad del Este:** {row.get('CHEGADA CIUDAD DEL ESTE PY', 'Não informado')}")
+                    st.write(f"**📦 Descarregamento:** {row.get('DESCARREGAMENTO', 'Não informado')}")
 
                 # ADICIONAR AQUI (depois do col2):
                 # Badge de status final
