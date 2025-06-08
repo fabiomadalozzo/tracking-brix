@@ -1104,28 +1104,6 @@ def dashboard_principal():
     """Dashboard principal"""
     usuario_info = st.session_state.usuario_info
 
-    # 🔍 DEBUG - ADICIONE ESTAS LINHAS TEMPORARIAMENTE:
-    st.write("### 🔍 DEBUG - Verificando Dados:")
-    st.write(f"- Total de trackings no sistema: {len(st.session_state.df_tracking)}")
-    st.write(f"- Colunas disponíveis: {list(st.session_state.df_tracking.columns)}")
-    st.write(f"- Tipo de usuário: {usuario_info['tipo']}")
-    
-    if not st.session_state.df_tracking.empty:
-        st.write("- Primeiro registro:")
-        st.write(st.session_state.df_tracking.iloc[0])
-    else:
-        st.write("- ❌ DataFrame está VAZIO!")
-    
-    # Filtrar dados baseado no usuário
-    df_usuario = filtrar_dados_por_cliente(st.session_state.df_tracking, usuario_info)
-    st.write(f"- Dados filtrados para o usuário: {len(df_usuario)} registros")
-    
-    if not df_usuario.empty:
-        st.write("- Primeiro registro filtrado:")
-        st.write(df_usuario.iloc[0])
-    else:
-        st.write("- ❌ Dados filtrados estão VAZIOS!")
-        
     # Cabeçalho
     st.markdown(f"""
     <div class="main-header">
