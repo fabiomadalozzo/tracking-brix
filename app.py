@@ -329,7 +329,7 @@ def inicializar_sistema():
                 'CANAL RFB': 'VERDE',
                 'LIBERAÇAO PORTO DESTINO': '24/05/2025',
                 'CHEGADA CIUDAD DEL ESTE PY': '26/05/2025',
-                'DESCARREGAMENTO': '28/05/2025'
+                'DESCARREGAMENTO': '28/05/2025',
                 'STATUS_FINAL': ''  # ✅ ADICIONAR ESTA LINHA
             },
             {
