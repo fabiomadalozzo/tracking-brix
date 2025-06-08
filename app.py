@@ -1361,7 +1361,7 @@ def dashboard_principal():
                     st.write(f"**📊 Status:** {row['CANAL RFB']}")
                     st.write(f"**📅 Carregamento:** {row['CARREGAMENTO']}")
                     st.write(f"**🚢 Embarque:** {row['EMBARQUE NAVIO']}")
-                    st.write(f"**📍 Previsão Porto Destino:** {row['PREVISAO CHEGADA PARANAGUÁ']}")
+                    st.write(f"**📍 Previsão Porto Destino:** {row['PREVISAO CHEGADA PARANAGUA']}")
                 
                 with col2:
                     st.write(f"**✅ Chegada Porto Destino:** {row['CHEGADA Porto Destino']}")
