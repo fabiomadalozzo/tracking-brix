@@ -1541,22 +1541,29 @@ def dashboard_principal():
                                 if not edit_cliente or not edit_container:
                                     st.error("❌ Cliente e Container são obrigatórios!")
                                 else:
-                                    # MÉTODO SEGURO: Atualizar coluna por coluna
-                                    st.session_state.df_tracking.loc[idx_selecionado, 'CLIENTE'] = edit_cliente
-                                    st.session_state.df_tracking.loc[idx_selecionado, 'CONTAINER'] = edit_container
-                                    st.session_state.df_tracking.loc[idx_selecionado, 'CARREGAMENTO'] = edit_carregamento
-                                    st.session_state.df_tracking.loc[idx_selecionado, 'EMBARQUE NAVIO'] = edit_embarque
-                                    st.session_state.df_tracking.loc[idx_selecionado, 'SAIDA NAVIO'] = edit_saida
-                                    st.session_state.df_tracking.loc[idx_selecionado, 'PREVISAO CHEGADA PORTO DESTINO'] = edit_previsao
-                                    st.session_state.df_tracking.loc[idx_selecionado, 'CHEGADA PORTO DESTINO'] = edit_chegada
-                                    st.session_state.df_tracking.loc[idx_selecionado, 'CANAL RFB'] = edit_canal
-                                    st.session_state.df_tracking.loc[idx_selecionado, 'LIBERAÇAO PORTO DESTINO'] = edit_liberacao
-                                    st.session_state.df_tracking.loc[idx_selecionado, 'CHEGADA CIUDAD DEL ESTE PY'] = edit_chegada_py
-                                    st.session_state.df_tracking.loc[idx_selecionado, 'DESCARREGAMENTO'] = edit_descarregamento
+                                    # Criar dicionário com os novos valores
+                                    novos_valores = {
+                                        'CLIENTE': edit_cliente,
+                                        'CONTAINER': edit_container,
+                                        'CARREGAMENTO': edit_carregamento,
+                                        'EMBARQUE NAVIO': edit_embarque,
+                                        'SAIDA NAVIO': edit_saida,
+                                        'PREVISAO CHEGADA PORTO DESTINO': edit_previsao,
+                                        'CHEGADA PORTO DESTINO': edit_chegada,
+                                        'CANAL RFB': edit_canal,
+                                        'LIBERAÇAO PORTO DESTINO': edit_liberacao,
+                                        'CHEGADA CIUDAD DEL ESTE PY': edit_chegada_py,
+                                        'DESCARREGAMENTO': edit_descarregamento
+                                    }
                                     
-                                    # Adicionar STATUS_FINAL se a variável existir
+                                    # Adicionar STATUS_FINAL se existir
                                     if 'edit_status_final' in locals():
-                                        st.session_state.df_tracking.loc[idx_selecionado, 'STATUS_FINAL'] = edit_status_final
+                                        novos_valores['STATUS_FINAL'] = edit_status_final
+                                    
+                                    # Atualizar usando o dicionário
+                                    for coluna, valor in novos_valores.items():
+                                        if coluna in st.session_state.df_tracking.columns:
+                                            st.session_state.df_tracking.loc[idx_selecionado, coluna] = valor
                                     
                                     st.success("✅ Registro atualizado!")
                                     st.rerun()
