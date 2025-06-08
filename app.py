@@ -197,8 +197,8 @@ DADOS_EMPRESA = {
 # Colunas do sistema
 COLUNAS = [
     'CLIENTE', 'CONTAINER', 'CARREGAMENTO', 'EMBARQUE NAVIO',
-    'SAIDA NAVIO', 'PREVISAO CHEGADA PARANAGUA', 'CHEGADA PARANAGUA',
-    'CANAL RFB', 'LIBERAÇAO PARANAGUA', 'CHEGADA CIUDAD DEL ESTE PY',
+    'SAIDA NAVIO', 'PREVISAO CHEGADA PORTO DESTINO', 'CHEGADA PORTO DESTINO',
+    'CANAL RFB', 'LIBERAÇAO PORTO DESTINO', 'CHEGADA CIUDAD DEL ESTE PY',
     'DESCARREGAMENTO', 'STATUS_FINAL'
 ]
 
@@ -320,10 +320,10 @@ def inicializar_sistema():
                 'CARREGAMENTO': '15/05/2025',
                 'EMBARQUE NAVIO': '18/05/2025',
                 'SAIDA NAVIO': '20/05/2025',
-                'PREVISAO CHEGADA PARANAGUA': '25/05/2025',
-                'CHEGADA PARANAGUA': '24/05/2025',
+                'PREVISAO CHEGADA PORTO DESTINO': '25/05/2025',
+                'CHEGADA PORTO DESTINO': '24/05/2025',
                 'CANAL RFB': 'VERDE',
-                'LIBERAÇAO PARANAGUA': '24/05/2025',
+                'LIBERAÇAO PORTO DESTINO': '24/05/2025',
                 'CHEGADA CIUDAD DEL ESTE PY': '26/05/2025',
                 'DESCARREGAMENTO': '28/05/2025'
             },
@@ -333,10 +333,10 @@ def inicializar_sistema():
                 'CARREGAMENTO': '22/05/2025',
                 'EMBARQUE NAVIO': '25/05/2025',
                 'SAIDA NAVIO': '27/05/2025',
-                'PREVISAO CHEGADA PARANAGUA': '02/06/2025',
-                'CHEGADA PARANAGUA': '',
+                'PREVISAO CHEGADA PORTO DESTINO': '02/06/2025',
+                'CHEGADA PORTO DESTINO': '',
                 'CANAL RFB': '',
-                'LIBERAÇAO PARANAGUA': '',
+                'LIBERAÇAO PORTO DESTINO': '',
                 'CHEGADA CIUDAD DEL ESTE PY': '',
                 'DESCARREGAMENTO': ''
             },
@@ -346,10 +346,10 @@ def inicializar_sistema():
                 'CARREGAMENTO': '20/05/2025',
                 'EMBARQUE NAVIO': '23/05/2025',
                 'SAIDA NAVIO': '25/05/2025',
-                'PREVISAO CHEGADA PARANAGUA': '30/05/2025',
-                'CHEGADA PARANAGUA': '29/05/2025',
+                'PREVISAO CHEGADA PORTO DESTINO': '30/05/2025',
+                'CHEGADA PORTO DESTINO': '29/05/2025',
                 'CANAL RFB': 'VERMELHO',
-                'LIBERAÇAO PARANAGUA': '',
+                'LIBERAÇAO PORTO DESTINO': '',
                 'CHEGADA CIUDAD DELESTE PY': '',
                 'DESCARREGAMENTO': ''
             }
@@ -1171,9 +1171,9 @@ def dashboard_principal():
                         
                         with col2:
                             saida = st.text_input("Saída Navio", placeholder="DD/MM/AAAA")
-                            previsao = st.text_input("Previsão Chegada Paranaguá", placeholder="DD/MM/AAAA")
+                            previsao = st.text_input("Previsão Chegada Porto Destino", placeholder="DD/MM/AAAA")
                             canal_rfb = st.selectbox("Canal RFB", ['', 'VERDE', 'VERMELHO'])
-                            chegada = st.text_input("Chegada Paranaguá", placeholder="DD/MM/AAAA")
+                            chegada = st.text_input("Chegada Porto Destino", placeholder="DD/MM/AAAA")
                             status_final = st.selectbox("Status Final:", STATUS_FINAIS)
                         
                         if st.form_submit_button("📦 Adicionar Tracking", type="primary"):
@@ -1184,10 +1184,10 @@ def dashboard_principal():
                                     'CARREGAMENTO': carregamento,
                                     'EMBARQUE NAVIO': embarque,
                                     'SAIDA NAVIO': saida,
-                                    'PREVISAO CHEGADA PARANAGUA': previsao,
-                                    'CHEGADA PARANAGUA': chegada,
+                                    'PREVISAO CHEGADA PORTO DESTINO': previsao,
+                                    'CHEGADA PORTO DESTINO': chegada,
                                     'CANAL RFB': canal_rfb,
-                                    'LIBERAÇAO PARANAGUA': '',
+                                    'LIBERAÇAO PORTO DESTINO': '',
                                     'CHEGADA CIUDAD DEL ESTE PY': '',
                                     'DESCARREGAMENTO': '',
                                     'STATUS_FINAL': '' 
@@ -1270,7 +1270,7 @@ def dashboard_principal():
                 st.markdown("### 📅 Status dos Seus Containers")
                 for _, row in df_usuario.iterrows():
                     status_emoji = "🟢" if row['CANAL RFB'] == 'VERDE' else "🔴" if row['CANAL RFB'] == 'VERMELHO' else "⏳"
-                    previsao = row['PREVISAO CHEGADA PARANAGUA'] if row['PREVISAO CHEGADA PARANAGUA'] else "Não informado"
+                    previsao = row['PREVISAO CHEGADA PORTO DESTINO'] if row['PREVISAO CHEGADA PORTO DESTINO'] else "Não informado"
                     st.write(f"{status_emoji} **{row['CONTAINER']}** - Previsão: {previsao}")
     
     # Filtros
@@ -1361,11 +1361,11 @@ def dashboard_principal():
                     st.write(f"**📊 Status:** {row['CANAL RFB']}")
                     st.write(f"**📅 Carregamento:** {row['CARREGAMENTO']}")
                     st.write(f"**🚢 Embarque:** {row['EMBARQUE NAVIO']}")
-                    st.write(f"**📍 Previsão Paranaguá:** {row['PREVISAO CHEGADA PARANAGUA']}")
+                    st.write(f"**📍 Previsão Porto Destino:** {row['PREVISAO CHEGADA PORTO DESTINO']}")
                 
                 with col2:
-                    st.write(f"**✅ Chegada Paranaguá:** {row['CHEGADA PARANAGUA']}")
-                    st.write(f"**🔓 Liberação:** {row['LIBERAÇAO PARANAGUA']}")
+                    st.write(f"**✅ Chegada Porto Destino:** {row['CHEGADA Porto Destino']}")
+                    st.write(f"**🔓 Liberação:** {row['LIBERAÇAO PORTO DESTINO']}")
                     st.write(f"**🚛 Chegada Ciudad del Este:** {row['CHEGADA CIUDAD DEL ESTE PY']}")
                     st.write(f"**📦 Descarregamento:** {row['DESCARREGAMENTO']}")
 
@@ -1430,12 +1430,12 @@ def dashboard_principal():
                             carregamento = st.text_input("Carregamento", placeholder="DD/MM/AAAA")
                             embarque = st.text_input("Embarque Navio", placeholder="DD/MM/AAAA")
                             saida = st.text_input("Saída Navio", placeholder="DD/MM/AAAA")
-                            previsao = st.text_input("Previsão Chegada Paranaguá", placeholder="DD/MM/AAAA")
+                            previsao = st.text_input("Previsão Chegada Porto Destino", placeholder="DD/MM/AAAA")
                         
                         with col2:
-                            chegada = st.text_input("Chegada Paranaguá", placeholder="DD/MM/AAAA")
+                            chegada = st.text_input("Chegada Porto Destino", placeholder="DD/MM/AAAA")
                             canal_rfb = st.selectbox("Canal RFB", ['', 'VERDE', 'VERMELHO'])
-                            liberacao = st.text_input("Liberação Paranaguá", placeholder="DD/MM/AAAA")
+                            liberacao = st.text_input("Liberação Porto Destino", placeholder="DD/MM/AAAA")
                             chegada_py = st.text_input("Chegada Ciudad del Este PY", placeholder="DD/MM/AAAA")
                             descarregamento = st.text_input("Descarregamento", placeholder="DD/MM/AAAA")
                         
@@ -1451,10 +1451,10 @@ def dashboard_principal():
                                     'CARREGAMENTO': carregamento,
                                     'EMBARQUE NAVIO': embarque,
                                     'SAIDA NAVIO': saida,
-                                    'PREVISAO CHEGADA PARANAGUA': previsao,
-                                    'CHEGADA PARANAGUA': chegada,
+                                    'PREVISAO CHEGADA PORTO DESTINO': previsao,
+                                    'CHEGADA PORTO DESTINO': chegada,
                                     'CANAL RFB': canal_rfb,
-                                    'LIBERAÇAO PARANAGUA': liberacao,
+                                    'LIBERAÇAO PORTO DESTINO': liberacao,
                                     'CHEGADA CIUDAD DEL ESTE PY': chegada_py,
                                     'DESCARREGAMENTO': descarregamento
                                 }
@@ -1498,13 +1498,13 @@ def dashboard_principal():
                                 edit_carregamento = st.text_input("Carregamento", value=registro['CARREGAMENTO'])
                                 edit_embarque = st.text_input("Embarque Navio", value=registro['EMBARQUE NAVIO'])
                                 edit_saida = st.text_input("Saída Navio", value=registro['SAIDA NAVIO'])
-                                edit_previsao = st.text_input("Previsão Chegada Paranaguá", value=registro['PREVISAO CHEGADA PARANAGUA'])
+                                edit_previsao = st.text_input("Previsão Chegada Porto Destino", value=registro['PREVISAO CHEGADA PORTO DESTINO'])
                             
                             with col2:
-                                edit_chegada = st.text_input("Chegada Paranaguá", value=registro['CHEGADA PARANAGUA'])
+                                edit_chegada = st.text_input("Chegada Porto Destino", value=registro['CHEGADA PORTO DESTINO'])
                                 edit_canal = st.selectbox("Canal RFB", ['', 'VERDE', 'VERMELHO'], 
                                                         index=['', 'VERDE', 'VERMELHO'].index(registro['CANAL RFB']) if registro['CANAL RFB'] in ['', 'VERDE', 'VERMELHO'] else 0)
-                                edit_liberacao = st.text_input("Liberação Paranaguá", value=registro['LIBERAÇAO PARANAGUA'])
+                                edit_liberacao = st.text_input("Liberação Porto Destino", value=registro['LIBERAÇAO PORTO DESTINO'])
                                 edit_chegada_py = st.text_input("Chegada Ciudad del Este PY", value=registro['CHEGADA CIUDAD DEL ESTE PY'])
                                 edit_descarregamento = st.text_input("Descarregamento", value=registro['DESCARREGAMENTO'])
                                 edit_status_final = st.selectbox("Status Final:", STATUS_FINAIS, 
@@ -1539,9 +1539,9 @@ def dashboard_principal():
             with st.expander("Ver Containers no Canal Vermelho"):
                 for _, row in containers_vermelho.iterrows():
                     if usuario_info["tipo"] == "admin":
-                        st.write(f"🔴 **{row['CLIENTE']}** - Container: {row['CONTAINER']} - Previsão: {row['PREVISAO CHEGADA PARANAGUA']}")
+                        st.write(f"🔴 **{row['CLIENTE']}** - Container: {row['CONTAINER']} - Previsão: {row['PREVISAO CHEGADA PORTO DESTINO']}")
                     else:
-                        st.write(f"🔴 **Container:** {row['CONTAINER']} - **Previsão:** {row['PREVISAO CHEGADA PARANAGUA']}")
+                        st.write(f"🔴 **Container:** {row['CONTAINER']} - **Previsão:** {row['PREVISAO CHEGADA PORTO DESTINO']}")
 
 def main():
     """Função principal da aplicação"""
