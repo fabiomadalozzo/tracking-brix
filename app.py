@@ -202,6 +202,10 @@ COLUNAS = [
     'DESCARREGAMENTO', 'STATUS_FINAL'
 ]
 
+for coluna in colunas_necessarias:
+    if coluna not in st.session_state.df_tracking.columns:
+        st.session_state.df_tracking[coluna] = ''
+        
 # ADICIONAR AQUI:
 STATUS_FINAIS = [
     "",
@@ -326,6 +330,7 @@ def inicializar_sistema():
                 'LIBERAÇAO PORTO DESTINO': '24/05/2025',
                 'CHEGADA CIUDAD DEL ESTE PY': '26/05/2025',
                 'DESCARREGAMENTO': '28/05/2025'
+                'STATUS_FINAL': ''  # ✅ ADICIONAR ESTA LINHA
             },
             {
                 'CLIENTE': 'EMPRESA ABC LTDA',
@@ -339,6 +344,7 @@ def inicializar_sistema():
                 'LIBERAÇAO PORTO DESTINO': '',
                 'CHEGADA CIUDAD DEL ESTE PY': '',
                 'DESCARREGAMENTO': ''
+                'STATUS_FINAL': ''  # ✅ ADICIONAR ESTA LINHA
             },
             {
                 'CLIENTE': 'COMERCIAL XYZ S.A.',
@@ -350,8 +356,9 @@ def inicializar_sistema():
                 'CHEGADA PORTO DESTINO': '29/05/2025',
                 'CANAL RFB': 'VERMELHO',
                 'LIBERAÇAO PORTO DESTINO': '',
-                'CHEGADA CIUDAD DELESTE PY': '',
+                'CHEGADA CIUDAD DE LESTE PY': '',
                 'DESCARREGAMENTO': ''
+                'STATUS_FINAL': ''  # ✅ ADICIONAR ESTA LINHA
             }
         ])
         
@@ -1494,21 +1501,21 @@ def dashboard_principal():
                                 clientes_disponiveis = list(st.session_state.clientes_db.keys())
                                 cliente_atual_idx = clientes_disponiveis.index(registro['CLIENTE']) if registro['CLIENTE'] in clientes_disponiveis else 0
                                 edit_cliente = st.selectbox("Cliente", clientes_disponiveis, index=cliente_atual_idx)
-                                edit_container = st.text_input("Container", value=registro['CONTAINER'])
-                                edit_carregamento = st.text_input("Carregamento", value=registro['CARREGAMENTO'])
-                                edit_embarque = st.text_input("Embarque Navio", value=registro['EMBARQUE NAVIO'])
-                                edit_saida = st.text_input("Saída Navio", value=registro['SAIDA NAVIO'])
-                                edit_previsao = st.text_input("Previsão Chegada Porto Destino", value=registro['PREVISAO CHEGADA PORTO DESTINO'])
+                                edit_container = st.text_input("Container", value=registro.get('CONTAINER', ''))
+                                edit_carregamento = st.text_input("Carregamento", value=registro.get('CARREGAMENTO', ''))
+                                edit_embarque = st.text_input("Embarque Navio", value=registro.get('EMBARQUE NAVIO', ''))
+                                edit_saida = st.text_input("Saída Navio", value=registro.get('SAIDA NAVIO', ''))
+                                edit_previsao = st.text_input("Previsão Chegada Porto Destino", value=registro.get('PREVISAO CHEGADA PORTO DESTINO', ''))
                             
                             with col2:
-                                edit_chegada = st.text_input("Chegada Porto Destino", value=registro['CHEGADA PORTO DESTINO'])
+                                edit_chegada = st.text_input("Chegada Porto Destino", value=registro.get('CHEGADA PORTO DESTINO', ''))
                                 edit_canal = st.selectbox("Canal RFB", ['', 'VERDE', 'VERMELHO'], 
-                                                        index=['', 'VERDE', 'VERMELHO'].index(registro['CANAL RFB']) if registro['CANAL RFB'] in ['', 'VERDE', 'VERMELHO'] else 0)
-                                edit_liberacao = st.text_input("Liberação Porto Destino", value=registro['LIBERAÇAO PORTO DESTINO'])
-                                edit_chegada_py = st.text_input("Chegada Ciudad del Este PY", value=registro['CHEGADA CIUDAD DEL ESTE PY'])
-                                edit_descarregamento = st.text_input("Descarregamento", value=registro['DESCARREGAMENTO'])
+                                                         index=['', 'VERDE', 'VERMELHO'].index(registro.get('CANAL RFB', '')) if registro.get('CANAL RFB', '') in ['', 'VERDE', 'VERMELHO'] else 0)
+                                edit_liberacao = st.text_input("Liberação Porto Destino", value=registro.get('LIBERAÇAO PORTO DESTINO', ''))
+                                edit_chegada_py = st.text_input("Chegada Ciudad del Este PY", value=registro.get('CHEGADA CIUDAD DEL ESTE PY', ''))
+                                edit_descarregamento = st.text_input("Descarregamento", value=registro.get('DESCARREGAMENTO', ''))
                                 edit_status_final = st.selectbox("Status Final:", STATUS_FINAIS, 
-                                   index=STATUS_FINAIS.index(registro.get('STATUS_FINAL', '')) if registro.get('STATUS_FINAL', '') in STATUS_FINAIS else 0)
+                                                                index=STATUS_FINAIS.index(registro.get('STATUS_FINAL', '')) if registro.get('STATUS_FINAL', '') in STATUS_FINAIS else 0)
                                 
                             submitted_edit = st.form_submit_button("💾 Salvar Alterações", type="primary")
                             
