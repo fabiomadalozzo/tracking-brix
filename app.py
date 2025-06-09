@@ -304,32 +304,32 @@ def inicializar_sistema():
                 "ativo": True,
                 "data_criacao": "07/06/2025"
             },
-                "operador_brix": {
-                    "senha": "op123",
-                    "tipo": "operador",
-                    "clientes_vinculados": ["MC CONFECCIONES", "BENTO COMEX"],  # Múltiplos clientes
-                    "nome": "Operador BRIX",
-                    "email": "operador@brixlogistica.com.br",
-                    "ativo": True,
-                    "data_criacao": "07/06/2025"
+            "operador_brix": {
+                "senha": "op123",
+                "tipo": "operador",
+                "clientes_vinculados": ["MC CONFECCIONES", "BENTO COMEX"],  # Múltiplos clientes
+                "nome": "Operador BRIX",
+                "email": "operador@brixlogistica.com.br",
+                "ativo": True,
+                "data_criacao": "07/06/2025"
            },
-                "giovana": {
-                    "senha": "1234",
-                    "tipo": "cliente",
-                    "cliente_vinculado": "MC CONFECCIONES",
-                    "nome": "GIOVANA CAMARGO",
-                    "email": "giovana@lcinter.com.br",
-                    "ativo": True,
-                    "data_criacao": "09/06/2025"
+           "giovana": {
+               "senha": "1234",
+               "tipo": "cliente",
+               "cliente_vinculado": "MC CONFECCIONES",
+               "nome": "GIOVANA CAMARGO",
+               "email": "giovana@lcinter.com.br",
+               "ativo": True,
+               "data_criacao": "09/06/2025"
            },
-                "tenora": {
-                    "senha": "1234",
-                    "tipo": "cliente",
-                    "cliente_vinculado": "TENORA",
-                    "nome": "TENORA",
-                    "email": "tenora@tenora.com.br",
-                    "ativo": True,
-                    "data_criacao": "09/06/2025"
+           "tenora": {
+               "senha": "1234",
+               "tipo": "cliente",
+               "cliente_vinculado": "TENORA",
+               "nome": "TENORA",
+               "email": "tenora@tenora.com.br",
+               "ativo": True,
+               "data_criacao": "09/06/2025"
            }
        }
         
