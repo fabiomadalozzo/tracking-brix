@@ -252,6 +252,17 @@ def inicializar_sistema():
                 "contato": "",
                 "ativo": True,
                 "data_cadastro": "07/06/2025"
+            },
+            "TENORA": {
+                "razao_social": "TENORA",
+                "nome_fantasia": "TENORA",
+                "cnpj": "28792545000105",
+                "email": "fiscal@brixcontabilidade.com.br",
+                "telefone": "4531984037",
+                "endereco": "",
+                "contato": "",
+                "ativo": True,
+                "data_cadastro": "08/06/2025"
             }
         }
         
@@ -301,6 +312,24 @@ def inicializar_sistema():
                     "email": "operador@brixlogistica.com.br",
                     "ativo": True,
                     "data_criacao": "07/06/2025"
+           },
+                "giovana": {
+                    "senha": "1234",
+                    "tipo": "cliente",
+                    "cliente_vinculado": "MC CONFECCIONES",
+                    "nome": "GIOVANA CAMARGO",
+                    "email": "giovana@lcinter.com.br",
+                    "ativo": True,
+                    "data_criacao": "09/06/2025"
+           },
+                "tenora": {
+                    "senha": "1234",
+                    "tipo": "cliente",
+                    "cliente_vinculado": "TENORA",
+                    "nome": "TENORA",
+                    "email": "tenora@tenora.com.br",
+                    "ativo": True,
+                    "data_criacao": "09/06/2025"
            }
        }
         
