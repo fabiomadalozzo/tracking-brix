@@ -253,6 +253,17 @@ def inicializar_sistema():
                 "ativo": True,
                 "data_cadastro": "07/06/2025"
             },
+            "MASPY": {
+                "razao_social": "MASPY S.A.",
+                "nome_fantasia": "MASPY S.A.",
+                "cnpj": "800931254",
+                "email": "leo@kfkprivate.com.br",
+                "telefone": "+595 61502286",
+                "endereco": "CIUDAD DEL ESTE",
+                "contato": "",
+                "ativo": True,
+                "data_cadastro": "12/06/2025"
+            },
             "TENORA": {
                 "razao_social": "TENORA",
                 "nome_fantasia": "TENORA",
@@ -312,6 +323,15 @@ def inicializar_sistema():
                 "email": "operador@brixlogistica.com.br",
                 "ativo": True,
                 "data_criacao": "07/06/2025"
+           },
+           "maspy": {
+               "senha": "1234",
+               "tipo": "cliente",
+               "cliente_vinculado": "MASPY",
+               "nome": "LEONARDO WALDRICH",
+               "email": "leo@kfkprivate.com.br",
+               "ativo": True,
+               "data_criacao": "16/06/2025"
            },
            "giovana": {
                "senha": "1234",
