@@ -274,6 +274,17 @@ def inicializar_sistema():
                 "contato": "",
                 "ativo": True,
                 "data_cadastro": "08/06/2025"
+            },
+            "PAPERBOX": {
+                "razao_social": "PAPERBOX",
+                "nome_fantasia": "PAPERBOX",
+                "cnpj": "PARAGUAY",
+                "email": "fiscal@brixcontabilidade.com.br",
+                "telefone": "4531984037",
+                "endereco": "",
+                "contato": "",
+                "ativo": True,
+                "data_cadastro": "18/06/2025"
             }
         }
         
@@ -350,6 +361,15 @@ def inicializar_sistema():
                "email": "tenora@tenora.com.br",
                "ativo": True,
                "data_criacao": "09/06/2025"
+           },
+           "paperbox": {
+               "senha": "1234",
+               "tipo": "cliente",
+               "cliente_vinculado": "PAPERBOX",
+               "nome": "PAPERBOX",
+               "email": "fiscal@brixcontabilidade.com.br",
+               "ativo": True,
+               "data_criacao": "18/06/2025"
            }
        }
         
