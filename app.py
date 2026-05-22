@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Sistema de Tracking BRIX - Versão GitHub com Token Permanente
-FUNCIONA EM QUALQUER DISPOSITIVO SEM CONFIGURAÇÃO
+Sistema de Tracking BRIX - Versão com Token GitHub Persistente
+NOVA FUNCIONALIDADE: Token salvo permanentemente no computador
 Escritório de contabilidade - Brasil
 """
 
@@ -15,10 +15,6 @@ import json
 import base64
 import os
 from pathlib import Path
-
-# 🔐 CONFIGURAÇÃO DO TOKEN GITHUB (APENAS VOCÊ PRECISA ALTERAR)
-# Cole seu token GitHub aqui - será usado automaticamente em qualquer computador
-GITHUB_TOKEN_CONFIGURADO = os.getenv("BRIX_TOKEN", "")
 
 # Configuração da página
 st.set_page_config(
@@ -184,6 +180,88 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
+# 🔐 CONFIGURAÇÃO DO TOKEN GITHUB (APENAS VOCÊ PRECISA ALTERAR)
+# Cole seu token GitHub aqui - será usado automaticamente em qualquer computador
+GITHUB_TOKEN_CONFIGURADO = "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"  # Cole seu token aqui: ghp_xxxxxxxxxx
+
+# FUNÇÕES PARA GERENCIAR TOKEN
+def obter_token_github():
+    """Obtém o token GitHub - primeiro tenta o configurado, depois o salvo localmente"""
+    # 1. Usar token configurado no código (prioritário)
+    if GITHUB_TOKEN_CONFIGURADO and GITHUB_TOKEN_CONFIGURADO.startswith('ghp_'):
+        return GITHUB_TOKEN_CONFIGURADO
+    
+    # 2. Tentar carregar token salvo localmente (fallback)
+    return carregar_token_persistente()
+
+def obter_diretorio_config():
+    """Obtém o diretório de configuração do BRIX"""
+    home_dir = Path.home()
+    config_dir = home_dir / ".brix_config"
+    config_dir.mkdir(exist_ok=True)
+    return config_dir
+
+def salvar_token_persistente(token):
+    """Salva o token GitHub de forma permanente"""
+    try:
+        config_dir = obter_diretorio_config()
+        token_file = config_dir / "github_token.txt"
+        
+        # Criptografia simples para segurança básica
+        token_encoded = base64.b64encode(token.encode()).decode()
+        
+        with open(token_file, 'w') as f:
+            f.write(token_encoded)
+        
+        return True
+    except Exception as e:
+        st.error(f"❌ Erro ao salvar token: {str(e)}")
+        return False
+
+def carregar_token_persistente():
+    """Carrega o token GitHub salvo"""
+    try:
+        config_dir = obter_diretorio_config()
+        token_file = config_dir / "github_token.txt"
+        
+        if token_file.exists():
+            with open(token_file, 'r') as f:
+                token_encoded = f.read().strip()
+            
+            if token_encoded:
+                token = base64.b64decode(token_encoded.encode()).decode()
+                return token
+        
+        return None
+    except Exception:
+        return None
+
+def remover_token_persistente():
+    """Remove o token salvo"""
+    try:
+        config_dir = obter_diretorio_config()
+        token_file = config_dir / "github_token.txt"
+        
+        if token_file.exists():
+            token_file.unlink()
+        
+        return True
+    except Exception:
+        return False
+
+def testar_token_github(token):
+    """Testa se o token GitHub é válido"""
+    try:
+        import requests
+        test_response = requests.get(
+            "https://api.github.com/user", 
+            headers={'Authorization': f'token {token}'},
+            timeout=5
+        )
+        return test_response.status_code == 200
+    except Exception:
+        return False
+
 # Dados da empresa
 DADOS_EMPRESA = {
     'nome': 'BRIX LOGÍSTICA',
@@ -194,36 +272,30 @@ DADOS_EMPRESA = {
     'cnpj': '31.247.532/0001-51'
 }
 
-# ADICIONAR AQUI:
-STATUS_FINAIS = [
-    "",
-    "🎉 PROCESSO FINALIZADO COM SUCESSO",
-    "⚠️ FINALIZADO COM PENDÊNCIAS", 
-    "❌ PROCESSO CANCELADO",
-    "🔄 EM PROCESSAMENTO",
-    "📋 AGUARDANDO DOCUMENTAÇÃO"
+# Colunas do sistema
+COLUNAS = [
+    'CLIENTE', 'CONTAINER', 'PORTO DESTINO', 'CARREGAMENTO', 'EMBARQUE NAVIO',
+    'SAIDA NAVIO', 'PREVISAO PORTO DESTINO', 'CHEGADA PORTO DESTINO',
+    'CANAL RFB', 'LIBERAÇAO PORTO DESTINO', 'CHEGADA PARAGUAY',
+    'DESCARREGAMENTO'
 ]
 
-def testar_token_github(token):
-    """Testa se o token GitHub é válido"""
-    try:
-        import requests
-        test_response = requests.get(
-            "https://api.github.com/user", 
-            headers={'Authorization': f'token {token}'},
-            timeout=10
-        )
-        return test_response.status_code == 200
-    except Exception:
-        return False
+# Mapa de migração: colunas antigas → novas
+MIGRACAO_COLUNAS = {
+    'PREVISAO CHEGADA PARANAGUA': 'PREVISAO PORTO DESTINO',
+    'CHEGADA PARANAGUA': 'CHEGADA PORTO DESTINO',
+    'LIBERAÇAO PARANAGUA': 'LIBERAÇAO PORTO DESTINO',
+    'CHEGADA CIUDAD DEL ESTE PY': 'CHEGADA PARAGUAY',
+}
 
 def inicializar_sistema():
     """Inicializa o sistema com dados padrão se necessário"""
     
-    # Configurar token automaticamente se disponível
-    if 'github_token' not in st.session_state and GITHUB_TOKEN_CONFIGURADO:
-        if testar_token_github(GITHUB_TOKEN_CONFIGURADO):
-            st.session_state.github_token = GITHUB_TOKEN_CONFIGURADO
+    # NOVO: Configurar token automaticamente
+    if 'github_token' not in st.session_state:
+        token_configurado = obter_token_github()
+        if token_configurado and testar_token_github(token_configurado):
+            st.session_state.github_token = token_configurado
             st.session_state.github_token_configurado = True
     
     # Inicializar dados básicos se não existirem
@@ -231,60 +303,27 @@ def inicializar_sistema():
         
         # DADOS PADRÃO PARA CLIENTES
         st.session_state.clientes_db = {
-            "MC CONFECCIONES": {
-                "razao_social": "MC CONFECCIONES",
-                "nome_fantasia": "MC CONFECCIONES",
-                "cnpj": "RUC: 80104097-3",
-                "email": "aristide.nosenzo@mcparaguay.com",
-                "telefone": "4531984037",
-                "endereco": "",
-                "contato": "Aristide Nosenzo",
+            "EMPRESA ABC LTDA": {
+                "razao_social": "EMPRESA ABC LTDA",
+                "nome_fantasia": "ABC Importadora",
+                "cnpj": "12.345.678/0001-01",
+                "email": "contato@empresaabc.com.br",
+                "telefone": "(11) 1111-1111",
+                "endereco": "Rua A, 123 - São Paulo/SP",
+                "contato": "João Silva",
                 "ativo": True,
-                "data_cadastro": "06/06/2025"
+                "data_cadastro": "01/06/2025"
             },
-            "BENTO COMEX": {
-                "razao_social": "BENTO COMEX",
-                "nome_fantasia": "BENTO COMEX",
-                "cnpj": "RUC",
-                "email": "nicolas@rrclogistica.com",
-                "telefone": "+595 61502286",
-                "endereco": "",
-                "contato": "",
+            "COMERCIAL XYZ S.A.": {
+                "razao_social": "COMERCIAL XYZ S.A.",
+                "nome_fantasia": "XYZ Trading",
+                "cnpj": "98.765.432/0001-02",
+                "email": "gerencia@comercialxyz.com.br",
+                "telefone": "(21) 2222-2222",
+                "endereco": "Av. B, 456 - Rio de Janeiro/RJ",
+                "contato": "Maria Santos",
                 "ativo": True,
-                "data_cadastro": "07/06/2025"
-            },
-            "MASPY": {
-                "razao_social": "MASPY S.A.",
-                "nome_fantasia": "MASPY S.A.",
-                "cnpj": "800931254",
-                "email": "leo@kfkprivate.com.br",
-                "telefone": "+595 61502286",
-                "endereco": "CIUDAD DEL ESTE",
-                "contato": "",
-                "ativo": True,
-                "data_cadastro": "12/06/2025"
-            },
-            "TENORA": {
-                "razao_social": "TENORA",
-                "nome_fantasia": "TENORA",
-                "cnpj": "28792545000105",
-                "email": "fiscal@brixcontabilidade.com.br",
-                "telefone": "4531984037",
-                "endereco": "",
-                "contato": "",
-                "ativo": True,
-                "data_cadastro": "08/06/2025"
-            },
-            "PAPERBOX": {
-                "razao_social": "PAPERBOX",
-                "nome_fantasia": "PAPERBOX",
-                "cnpj": "PARAGUAY",
-                "email": "fiscal@brixcontabilidade.com.br",
-                "telefone": "4531984037",
-                "endereco": "",
-                "contato": "",
-                "ativo": True,
-                "data_cadastro": "18/06/2025"
+                "data_cadastro": "01/06/2025"
             }
         }
         
@@ -299,137 +338,71 @@ def inicializar_sistema():
                 "ativo": True,
                 "data_criacao": "01/06/2025"
             },
-            "aristide": {
-                "senha": "1234",
+            "empresa_abc": {
+                "senha": "abc123",
                 "tipo": "cliente",
-                "cliente_vinculado": "MC CONFECCIONES",
-                "nome": "Aristide Nosenzo",
-                "email": "aristide.nosenzo@mcparaguay.com",
+                "cliente_vinculado": "EMPRESA ABC LTDA",
+                "nome": "Empresa ABC",
+                "email": "contato@empresaabc.com.br",
                 "ativo": True,
-                "data_criacao": "06/06/2025"
+                "data_criacao": "01/06/2025"
             },
-            "rodrigo": {
-                "senha": "1234",
+            "comercial_xyz": {
+                "senha": "xyz123",
                 "tipo": "cliente",
-                "cliente_vinculado": "MC CONFECCIONES",
-                "nome": "RODRIGO CALDAS",
-                "email": "rodrigo@stillosrc2.com.br",
+                "cliente_vinculado": "COMERCIAL XYZ S.A.",
+                "nome": "Comercial XYZ",
+                "email": "gerencia@comercialxyz.com.br", 
                 "ativo": True,
-                "data_criacao": "06/06/2025"
-            },
-            "nicolas": {
-                "senha": "1234",
-                "tipo": "operador",
-                "cliente_vinculado": "BENTO COMEX",
-                "nome": "NICOLAS M MARTINEZ",
-                "email": "nicolas@rrclogistica.com",
-                "ativo": True,
-                "data_criacao": "07/06/2025"
-            },
-            "operador_brix": {
-                "senha": "op123",
-                "tipo": "operador",
-                "clientes_vinculados": ["MC CONFECCIONES", "BENTO COMEX"],  # Múltiplos clientes
-                "nome": "Operador BRIX",
-                "email": "operador@brixlogistica.com.br",
-                "ativo": True,
-                "data_criacao": "07/06/2025"
-           },
-           "maspy": {
-               "senha": "1234",
-               "tipo": "cliente",
-               "cliente_vinculado": "MASPY",
-               "nome": "LEONARDO WALDRICH",
-               "email": "leo@kfkprivate.com.br",
-               "ativo": True,
-               "data_criacao": "16/06/2025"
-           },
-           "giovana": {
-               "senha": "1234",
-               "tipo": "cliente",
-               "cliente_vinculado": "MC CONFECCIONES",
-               "nome": "GIOVANA CAMARGO",
-               "email": "giovana@lcinter.com.br",
-               "ativo": True,
-               "data_criacao": "09/06/2025"
-           },
-           "tenora": {
-               "senha": "1234",
-               "tipo": "cliente",
-               "cliente_vinculado": "TENORA",
-               "nome": "TENORA",
-               "email": "tenora@tenora.com.br",
-               "ativo": True,
-               "data_criacao": "09/06/2025"
-           },
-           "paperbox": {
-               "senha": "1234",
-               "tipo": "cliente",
-               "cliente_vinculado": "PAPERBOX",
-               "nome": "PAPERBOX",
-               "email": "fiscal@brixcontabilidade.com.br",
-               "ativo": True,
-               "data_criacao": "18/06/2025"
-           }
-       }
+                "data_criacao": "01/06/2025"
+            }
+        }
         
         # DADOS PADRÃO PARA TRACKINGS
         st.session_state.df_tracking = pd.DataFrame([
             {
                 'CLIENTE': 'EMPRESA ABC LTDA',
                 'CONTAINER': 'TCLU1234567',
+                'PORTO DESTINO': 'Paranaguá - PR',
                 'CARREGAMENTO': '15/05/2025',
                 'EMBARQUE NAVIO': '18/05/2025',
                 'SAIDA NAVIO': '20/05/2025',
-                'PREVISAO CHEGADA PORTO DESTINO': '25/05/2025',    # ✅ Correto
-                'CHEGADA PORTO DESTINO': '24/05/2025',             # ✅ Correto
+                'PREVISAO PORTO DESTINO': '25/05/2025',
+                'CHEGADA PORTO DESTINO': '24/05/2025',
                 'CANAL RFB': 'VERDE',
                 'LIBERAÇAO PORTO DESTINO': '24/05/2025',
-                'CHEGADA CIUDAD DEL ESTE PY': '26/05/2025',
-                'DESCARREGAMENTO': '28/05/2025',
-                'STATUS_FINAL': ''  # ✅ ADICIONAR ESTA LINHA
+                'CHEGADA PARAGUAY': '26/05/2025',
+                'DESCARREGAMENTO': '28/05/2025'
             },
             {
                 'CLIENTE': 'EMPRESA ABC LTDA',
                 'CONTAINER': 'ABCU7777777',
+                'PORTO DESTINO': 'Paranaguá - PR',
                 'CARREGAMENTO': '22/05/2025',
                 'EMBARQUE NAVIO': '25/05/2025',
                 'SAIDA NAVIO': '27/05/2025',
-                'PREVISAO CHEGADA PORTO DESTINO': '02/06/2025',
+                'PREVISAO PORTO DESTINO': '02/06/2025',
                 'CHEGADA PORTO DESTINO': '',
                 'CANAL RFB': '',
                 'LIBERAÇAO PORTO DESTINO': '',
-                'CHEGADA CIUDAD DEL ESTE PY': '',
-                'DESCARREGAMENTO': '',
-                'STATUS_FINAL': ''  # ✅ ADICIONAR ESTA LINHA
+                'CHEGADA PARAGUAY': '',
+                'DESCARREGAMENTO': ''
             },
             {
                 'CLIENTE': 'COMERCIAL XYZ S.A.',
                 'CONTAINER': 'MSKU9876543',
+                'PORTO DESTINO': 'Paranaguá - PR',
                 'CARREGAMENTO': '20/05/2025',
                 'EMBARQUE NAVIO': '23/05/2025',
                 'SAIDA NAVIO': '25/05/2025',
-                'PREVISAO CHEGADA PORTO DESTINO': '30/05/2025',
+                'PREVISAO PORTO DESTINO': '30/05/2025',
                 'CHEGADA PORTO DESTINO': '29/05/2025',
                 'CANAL RFB': 'VERMELHO',
                 'LIBERAÇAO PORTO DESTINO': '',
-                'CHEGADA CIUDAD DE LESTE PY': '',
-                'DESCARREGAMENTO': '',
-                'STATUS_FINAL': ''  # ✅ ADICIONAR ESTA LINHA
+                'CHEGADA PARAGUAY': '',
+                'DESCARREGAMENTO': ''
             }
         ])
-
-        # Garantir que todas as colunas necessárias existam
-        colunas_necessarias = [
-            'CLIENTE', 'CONTAINER', 'CARREGAMENTO', 'EMBARQUE NAVIO',
-            'SAIDA NAVIO', 'PREVISAO CHEGADA PORTO DESTINO', 'CHEGADA PORTO DESTINO',
-            'CANAL RFB', 'LIBERAÇAO PORTO DESTINO', 'CHEGADA CIUDAD DEL ESTE PY',
-            'DESCARREGAMENTO', 'STATUS_FINAL'
-        ]
-        
-        for coluna in colunas_necessarias:
-            if coluna not in st.session_state.df_tracking.columns:
-                st.session_state.df_tracking[coluna] = ''
         
         # Outras variáveis de controle
         st.session_state.logado = False
@@ -439,6 +412,47 @@ def inicializar_sistema():
         
         # Marcar que dados foram inicializados
         st.session_state.dados_inicializados = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+
+def criar_backup_manual():
+    """Cria backup manual dos dados para download"""
+    backup_data = {
+        'clientes': st.session_state.clientes_db,
+        'usuarios': st.session_state.usuarios_db,
+        'trackings': st.session_state.df_tracking.to_dict('records'),
+        'metadata': {
+            'data_backup': datetime.now().strftime("%d/%m/%Y %H:%M:%S"),
+            'versao': '2.0',
+            'total_clientes': len(st.session_state.clientes_db),
+            'total_usuarios': len(st.session_state.usuarios_db),
+            'total_trackings': len(st.session_state.df_tracking)
+        }
+    }
+    
+    json_backup = json.dumps(backup_data, ensure_ascii=False, indent=2)
+    return json_backup
+
+def restaurar_backup_manual(json_data):
+    """Restaura dados a partir de backup manual"""
+    try:
+        backup_data = json.loads(json_data)
+        
+        # Validar estrutura do backup
+        if not all(key in backup_data for key in ['clientes', 'usuarios', 'trackings']):
+            return False, "❌ Arquivo de backup inválido!"
+        
+        # Restaurar dados
+        st.session_state.clientes_db = backup_data['clientes']
+        st.session_state.usuarios_db = backup_data['usuarios']
+        df_restaurado = pd.DataFrame(backup_data['trackings'])
+        st.session_state.df_tracking = migrar_colunas_antigas(df_restaurado)
+        
+        # Atualizar metadata
+        st.session_state.dados_restaurados = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+        
+        return True, "✅ Backup restaurado com sucesso!"
+        
+    except Exception as e:
+        return False, f"❌ Erro ao restaurar backup: {str(e)}"
 
 def verificar_login(usuario, senha):
     """Verifica credenciais do usuário"""
@@ -453,22 +467,11 @@ def verificar_login(usuario, senha):
     return None
 
 def filtrar_dados_por_cliente(df, usuario_info):
-    """Filtra dados baseado no tipo de usuário - VERSÃO COMPATÍVEL"""
+    """Filtra dados baseado no tipo de usuário"""
     if usuario_info["tipo"] == "admin":
-        return df  # Admin vê tudo
+        return df
     else:
-        # Compatibilidade: suporte tanto singular quanto plural
-        if "clientes_vinculados" in usuario_info:
-            # Novo formato (lista)
-            clientes = usuario_info["clientes_vinculados"]
-            return df[df['CLIENTE'].isin(clientes)]
-        elif "cliente_vinculado" in usuario_info:
-            # Formato antigo (string única)
-            cliente = usuario_info["cliente_vinculado"]
-            return df[df['CLIENTE'] == cliente]
-        else:
-            # Fallback: retorna vazio se não encontrar
-            return df.iloc[0:0]
+        return df[df['CLIENTE'] == usuario_info["cliente_vinculado"]]
 
 def colorir_linha(row):
     """Aplica cores baseado no canal RFB com texto preto forçado"""
@@ -478,6 +481,107 @@ def colorir_linha(row):
         return ['background-color: #fadbd8; color: #000000 !important; font-weight: bold;'] * len(row)
     else:
         return ['color: #000000 !important;'] * len(row)
+
+def migrar_colunas_antigas(df):
+    """Migra dados de versões antigas para os novos nomes de colunas"""
+    df = df.rename(columns=MIGRACAO_COLUNAS)
+    for col in COLUNAS:
+        if col not in df.columns:
+            df[col] = ''
+    # Garantir ordem certa e apenas colunas conhecidas
+    cols_presentes = [c for c in COLUNAS if c in df.columns]
+    return df[cols_presentes]
+
+def tem_valor(v):
+    """Verifica se uma célula tem valor preenchido"""
+    return bool(v) and str(v).strip() not in ['', 'nan', 'None', 'NaT', '-']
+
+def calcular_status(row):
+    """
+    Determina o status atual do container baseado nas datas preenchidas.
+    Retorna: (texto_status, cor_borda, cor_fundo)
+    """
+    canal = str(row.get('CANAL RFB', '')).strip().upper()
+
+    if tem_valor(row.get('DESCARREGAMENTO')):
+        return '✅ FINALIZADO', '#27ae60', '#d5f4e6'
+
+    if tem_valor(row.get('CHEGADA PARAGUAY')):
+        return '🚛 NA RODOVIA', '#e67e22', '#fef3cd'
+
+    if tem_valor(row.get('LIBERAÇAO PORTO DESTINO')):
+        return '🚛 NA RODOVIA', '#e67e22', '#fef3cd'
+
+    if tem_valor(row.get('CHEGADA PORTO DESTINO')):
+        if canal == 'VERDE':
+            return '🟢 VERDE', '#27ae60', '#d5f4e6'
+        elif canal == 'VERMELHO':
+            return '🔴 VERMELHO', '#e74c3c', '#fadbd8'
+        return '⚓ NO PORTO', '#3498db', '#d6eaf8'
+
+    if tem_valor(row.get('SAIDA NAVIO')):
+        return '🌊 NO MAR', '#2980b9', '#d6eaf8'
+
+    if canal == 'VERDE':
+        return '🟢 VERDE', '#27ae60', '#d5f4e6'
+    elif canal == 'VERMELHO':
+        return '🔴 VERMELHO', '#e74c3c', '#fadbd8'
+
+    if tem_valor(row.get('CARREGAMENTO')):
+        return '🚢 AGUARD. EMBARQUE', '#7f8c8d', '#f2f3f4'
+
+    return '⏳ AGUARDANDO', '#95a5a6', '#f2f3f4'
+
+def calcular_transit_times(row):
+    """
+    Calcula transit times automaticamente:
+    - Marítimo: saída navio → chegada real (ou previsão se ainda não chegou)
+    - Rodoviário: liberação porto destino → chegada Paraguay
+    - Total: carregamento → descarregamento
+    """
+    def parse_data(date_str):
+        if not tem_valor(date_str):
+            return None
+        for fmt in ['%d/%m/%Y %H:%M', '%d/%m/%Y']:
+            try:
+                return datetime.strptime(str(date_str).strip(), fmt)
+            except Exception:
+                continue
+        return None
+
+    saida          = parse_data(row.get('SAIDA NAVIO', ''))
+    chegada_real   = parse_data(row.get('CHEGADA PORTO DESTINO', ''))
+    previsao       = parse_data(row.get('PREVISAO PORTO DESTINO', ''))
+    liberacao      = parse_data(row.get('LIBERAÇAO PORTO DESTINO', ''))
+    chegada_py     = parse_data(row.get('CHEGADA PARAGUAY', ''))
+    carregamento   = parse_data(row.get('CARREGAMENTO', ''))
+    descarregamento = parse_data(row.get('DESCARREGAMENTO', ''))
+
+    result = {
+        'transit_maritimo': None,
+        'transit_maritimo_real': False,
+        'transit_rodoviario': None,
+        'tempo_total': None,
+    }
+
+    # --- Transit marítimo ---
+    if saida:
+        if chegada_real:
+            result['transit_maritimo'] = (chegada_real - saida).days
+            result['transit_maritimo_real'] = True
+        elif previsao:
+            result['transit_maritimo'] = (previsao - saida).days
+            result['transit_maritimo_real'] = False
+
+    # --- Transit rodoviário ---
+    if liberacao and chegada_py:
+        result['transit_rodoviario'] = (chegada_py - liberacao).days
+
+    # --- Tempo total ---
+    if carregamento and descarregamento:
+        result['tempo_total'] = (descarregamento - carregamento).days
+
+    return result
 
 def gerar_usuario_automatico(razao_social):
     """Gera usuário automático baseado na razão social"""
@@ -497,11 +601,139 @@ def gerar_senha_temporaria():
     import string
     return ''.join(random.choices(string.ascii_lowercase + string.digits, k=8))
 
+def sidebar_backup_system():
+    """Sistema de backup na sidebar - VERSÃO AUTOMÁTICA PARA CLIENTES"""
+    with st.sidebar:
+        st.markdown("---")
+        st.subheader("💾 Sistema BRIX")
+        
+        # Estatísticas
+        st.write(f"🏢 Clientes: {len(st.session_state.clientes_db)}")
+        st.write(f"👥 Usuários: {len(st.session_state.usuarios_db)}")
+        st.write(f"📦 Trackings: {len(st.session_state.df_tracking)}")
+        
+        # MODIFICADO: Sistema automático
+        if 'github_token_configurado' not in st.session_state:
+            # Tentar configurar automaticamente
+            token_configurado = obter_token_github()
+            if token_configurado and testar_token_github(token_configurado):
+                st.session_state.github_token = token_configurado
+                st.session_state.github_token_configurado = True
+                st.success("🔐 **Sistema configurado automaticamente!**")
+                st.rerun()
+        
+        # Se ainda não conseguiu configurar automaticamente
+        if 'github_token_configurado' not in st.session_state:
+            # Verificar se é porque token no código não foi configurado
+            if not GITHUB_TOKEN_CONFIGURADO:
+                st.info("🔐 **Para Desenvolvedores:**")
+                st.markdown("""
+                **🛠️ Configuração necessária no código:**
+                
+                1. Cole seu token GitHub na variável:
+                ```python
+                GITHUB_TOKEN_CONFIGURADO = "ghp_seu_token_aqui"
+                ```
+                
+                2. Isso fará o sistema funcionar automaticamente em qualquer computador!
+                """)
+            else:
+                st.error("🔐 **Token configurado mas inválido**")
+                st.markdown("Verifique se o token GitHub está correto no código.")
+            
+            # Opção manual como fallback
+            with st.expander("⚙️ Configuração Manual (Emergência)", expanded=False):
+                st.markdown("""
+                **🔧 Se precisar configurar manualmente:**
+                1. Acesse: https://github.com/settings/tokens
+                2. Clique "Generate new token (classic)"  
+                3. Nome: "BRIX Backup"
+                4. Marque: ✅ repo
+                5. Cole o token abaixo:
+                """)
+                
+                token_input = st.text_input(
+                    "🔑 Token GitHub:", 
+                    type="password", 
+                    placeholder="ghp_emergencia_token...",
+                    help="Só use se necessário"
+                )
+                
+                if st.button("💾 Usar Token Manual") and token_input:
+                    with st.spinner("🔍 Testando token..."):
+                        if testar_token_github(token_input):
+                            salvar_token_persistente(token_input)
+                            st.session_state.github_token = token_input
+                            st.session_state.github_token_configurado = True
+                            st.success("✅ Configurado manualmente!")
+                            st.rerun()
+                        else:
+                            st.error("❌ Token inválido!")
+            
+            return
+        
+        # SISTEMA CONFIGURADO E FUNCIONANDO
+        st.success("🔐 **GitHub:** Configurado automaticamente")
+        st.success("🤖 **Backup:** Sincronização ativa") 
+        st.success("💾 **Multi-PC:** Funciona em qualquer computador")
+        
+        # Token configurado - executar automação
+        executar_sistema_github()
+        
+        # CONTROLES APENAS PARA ADMIN
+        if st.session_state.usuario_info and st.session_state.usuario_info.get("tipo") == "admin":
+            st.markdown("---")
+            st.subheader("⚙️ Controles Admin")
+            
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                if st.button("📤 Backup", help="Backup manual"):
+                    executar_backup_github()
+            
+            with col2:
+                if st.button("🔄 Atualizar", help="Sincronizar agora"):
+                    st.session_state.backup_sincronizado = False
+                    st.rerun()
+            
+            # Status do último backup
+            if 'ultimo_backup' in st.session_state:
+                st.info(f"💾 Último backup: {st.session_state.ultimo_backup}")
+            
+            # Informações de configuração (só para admin)
+            with st.expander("🔧 Informações do Sistema"):
+                st.markdown(f"""
+                **🔐 Status da Configuração:**
+                - **Token no código:** {'✅ Configurado' if GITHUB_TOKEN_CONFIGURADO else '❌ Não configurado'}
+                - **Funcionamento:** {'✅ Automático' if GITHUB_TOKEN_CONFIGURADO else '⚠️ Manual necessário'}
+                - **Multi-PC:** {'✅ Sim' if GITHUB_TOKEN_CONFIGURADO else '❌ Não'}
+                """)
+                
+                if st.button("🔄 Reconfigurar Sistema"):
+                    if 'github_token_configurado' in st.session_state:
+                        del st.session_state.github_token_configurado
+                    if 'github_token' in st.session_state:
+                        del st.session_state.github_token
+                    st.rerun()
+        
+        else:
+            # PARA CLIENTES - INTERFACE LIMPA
+            st.markdown("---")
+            st.success("📊 Sistema funcionando automaticamente")
+            st.info("🔄 Dados sempre sincronizados")
+            
+            if st.button("🔄 Atualizar Dados"):
+                st.session_state.backup_sincronizado = False
+                st.rerun()
+        
+        # STATUS GERAL
+        if 'dados_restaurados' in st.session_state:
+            st.write(f"🕐 Última sincronização: {st.session_state.dados_restaurados}")
+        else:
+            st.write("🕐 Carregando dados...")
+
 def executar_sistema_github():
     """Executa sincronização e backup automático do GitHub"""
-    if 'github_token' not in st.session_state:
-        return
-        
     GITHUB_TOKEN = st.session_state.github_token
     GITHUB_REPO = "fabiomadalozzo/brix-backup"
     GITHUB_FILE = "backup_brix.json"
@@ -526,21 +758,20 @@ def executar_sistema_github():
                     content_base64 = file_data['content']
                     content_decoded = base64.b64decode(content_base64).decode('utf-8')
                     backup_data = json.loads(content_decoded)
-                    
-                    # Carregar dados do GitHub
+
                     st.session_state.clientes_db = backup_data['clientes']
                     st.session_state.usuarios_db = backup_data['usuarios']
-                    st.session_state.df_tracking = pd.DataFrame(backup_data['trackings'])
+                    df_restaurado = pd.DataFrame(backup_data['trackings'])
+                    st.session_state.df_tracking = migrar_colunas_antigas(df_restaurado)
                     st.session_state.dados_restaurados = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
                     
-                    st.success("✅ Dados sincronizados do GitHub!")
+                    st.success("✅ Dados sincronizados automaticamente!")
                 
                 st.session_state.backup_sincronizado = True
                 st.rerun()
                 
         except Exception as e:
             st.session_state.backup_sincronizado = True
-            st.warning(f"⚠️ Erro na sincronização: {str(e)}")
     
     # BACKUP AUTOMÁTICO (só admin)
     if st.session_state.usuario_info and st.session_state.usuario_info.get("tipo") == "admin":
@@ -559,9 +790,6 @@ def executar_sistema_github():
 
 def executar_backup_github():
     """Executa backup no GitHub"""
-    if 'github_token' not in st.session_state:
-        return False
-        
     try:
         import requests
         import base64
@@ -577,7 +805,7 @@ def executar_backup_github():
             'trackings': st.session_state.df_tracking.to_dict('records'),
             'metadata': {
                 'data_backup': datetime.now().strftime("%d/%m/%Y %H:%M:%S"),
-                'versao': '3.0-TOKEN-PERMANENTE'
+                'versao': '2.3-MULTI-COMPUTADOR-AUTOMATICO'
             }
         }
         
@@ -610,65 +838,11 @@ def executar_backup_github():
             return False
             
     except Exception as e:
-        st.error(f"❌ Erro no backup: {str(e)}")
+        st.error(f"❌ Erro: {str(e)}")
         return False
 
-def sidebar_backup_system():
-    """Sistema de backup na sidebar"""
-    with st.sidebar:
-        st.markdown("---")
-        st.subheader("💾 Sistema BRIX")
-        
-        # Estatísticas
-        st.write(f"🏢 Clientes: {len(st.session_state.clientes_db)}")
-        st.write(f"👥 Usuários: {len(st.session_state.usuarios_db)}")
-        st.write(f"📦 Trackings: {len(st.session_state.df_tracking)}")
-        
-        # Status do GitHub
-        if 'github_token_configurado' in st.session_state:
-            st.success("🔐 **GitHub:** Configurado")
-            st.success("🤖 **Automação:** Ativa")
-            
-            # Executar sistema GitHub
-            executar_sistema_github()
-            
-            # Controles para admin
-            if st.session_state.usuario_info and st.session_state.usuario_info.get("tipo") == "admin":
-                st.markdown("---")
-                st.subheader("⚙️ Controles Admin")
-                
-                col1, col2 = st.columns(2)
-                
-                with col1:
-                    if st.button("📤 Backup"):
-                        executar_backup_github()
-                
-                with col2:
-                    if st.button("🔄 Sincronizar"):
-                        st.session_state.backup_sincronizado = False
-                        st.rerun()
-                
-                if 'ultimo_backup' in st.session_state:
-                    st.info(f"💾 Último backup: {st.session_state.ultimo_backup}")
-            
-            else:
-                st.markdown("---")
-                st.info("📊 Dados sempre atualizados")
-                
-                if st.button("🔄 Atualizar"):
-                    st.session_state.backup_sincronizado = False
-                    st.rerun()
-        
-        else:
-            st.warning("⚠️ **GitHub não configurado**")
-            st.info("Sistema funcionando localmente")
-        
-        # Status
-        if 'dados_restaurados' in st.session_state:
-            st.write(f"🕐 Última sync: {st.session_state.dados_restaurados}")
-
 def tela_login():
-    """Tela de login"""
+    """Tela de login - CORRIGIDA para mobile"""
     st.markdown("""
     <div class="main-header">
         <h1>🚢 BRIX LOGÍSTICA</h1>
@@ -677,10 +851,19 @@ def tela_login():
     </div>
     """, unsafe_allow_html=True)
     
+    # Alert sobre persistência
+    st.info("""
+    ℹ️ **Importante sobre os dados:**
+    - Os dados ficam salvos **durante sua sessão**
+    - Para backup permanente, use o **Sistema de Backup** após fazer login
+    - Sempre faça backup antes de fechar o navegador!
+    """)
+    
     st.markdown('<div class="login-container">', unsafe_allow_html=True)
     
     st.markdown("### 🔐 Fazer Login")
     
+    # Usar columns ao invés de form para melhor compatibilidade mobile
     col1, col2 = st.columns([1, 1])
     
     with col1:
@@ -698,6 +881,7 @@ def tela_login():
             key="mobile_login_pass"
         )
     
+    # Botão de login
     if st.button("🚀 Entrar", type="primary", use_container_width=True):
         if usuario and senha:
             usuario_limpo = str(usuario).strip().lower()
@@ -736,6 +920,14 @@ def tela_login():
         - Horário: Seg-Sex 8h-18h
         """)
     
+    with col2:
+        st.markdown("""
+        **🧪 Contas de Teste:**
+        - **Admin:** admin / admin123
+        - **Cliente ABC:** empresa_abc / abc123
+        - **Cliente XYZ:** comercial_xyz / xyz123
+        """)
+
 def pagina_clientes():
     """Página para gerenciar clientes"""
     st.header("🏢 Gerenciamento de Clientes")
@@ -805,8 +997,9 @@ def pagina_clientes():
                         if user_data.get('cliente_vinculado') == razao_social
                     ]
                     for user_id in usuarios_para_excluir:
-                        del st.session_state.usuarios
-                        del st.session_state.excluindo_cliente
+                        del st.session_state.usuarios_db[user_id]
+                    
+                    del st.session_state.excluindo_cliente
                     st.success("🗑️ Cliente e dados relacionados excluídos!")
                     st.rerun()
             with col2:
@@ -1172,7 +1365,7 @@ def pagina_usuarios():
 def dashboard_principal():
     """Dashboard principal"""
     usuario_info = st.session_state.usuario_info
-
+    
     # Cabeçalho
     st.markdown(f"""
     <div class="main-header">
@@ -1228,7 +1421,7 @@ def dashboard_principal():
     # Verificar se tem dados para mostrar
     if st.session_state.df_tracking.empty:
         if usuario_info["tipo"] == "admin":
-            st.info("📋 Nenhum tracking cadastrado ainda. Adicione um novo tracking abaixo.")
+            st.info("📋 Nenhum tracking cadastrado ainda. Use o sistema de backup para restaurar dados ou adicione um novo tracking abaixo.")
             
             # Mostrar formulário para adicionar primeiro tracking
             with st.expander("➕ Adicionar Primeiro Tracking", expanded=True):
@@ -1237,38 +1430,37 @@ def dashboard_principal():
                 else:
                     with st.form("primeiro_tracking"):
                         col1, col2 = st.columns(2)
-                        
+
                         with col1:
                             clientes_disponiveis = list(st.session_state.clientes_db.keys())
                             cliente_selecionado = st.selectbox("Cliente *", clientes_disponiveis)
-                            container = st.text_input("Container *", placeholder="ex: TCLU1234567")
-                            carregamento = st.text_input("Carregamento", placeholder="DD/MM/AAAA")
-                            embarque = st.text_input("Embarque Navio", placeholder="DD/MM/AAAA")
-                        
+                            container    = st.text_input("Container *", placeholder="ex: TCLU1234567")
+                            porto_dest   = st.text_input("Porto de Destino", placeholder="ex: Paranaguá - PR")
+                            carregamento = st.text_input("📅 Carregamento origem", placeholder="DD/MM/AAAA")
+                            embarque     = st.text_input("🚢 Embarque Navio", placeholder="DD/MM/AAAA")
+
                         with col2:
-                            saida = st.text_input("Saída Navio", placeholder="DD/MM/AAAA")
-                            previsao = st.text_input("Previsão Chegada Porto Destino", placeholder="DD/MM/AAAA")
-                            canal_rfb = st.selectbox("Canal RFB", ['', 'VERDE', 'VERMELHO'])
-                            chegada = st.text_input("Chegada Porto Destino", placeholder="DD/MM/AAAA")
-                            status_final = st.selectbox("Status Final:", STATUS_FINAIS)
-                        
+                            saida    = st.text_input("🚢 Saída Navio porto origem", placeholder="DD/MM/AAAA")
+                            previsao = st.text_input("📍 Previsão Porto Destino", placeholder="DD/MM/AAAA")
+                            canal_rfb = st.selectbox("🔍 Canal RFB", ['', 'VERDE', 'VERMELHO'])
+                            chegada  = st.text_input("✅ Chegada real Porto Destino", placeholder="DD/MM/AAAA HH:MM")
+
                         if st.form_submit_button("📦 Adicionar Tracking", type="primary"):
                             if cliente_selecionado and container:
                                 novo_tracking = {
                                     'CLIENTE': cliente_selecionado,
                                     'CONTAINER': container,
+                                    'PORTO DESTINO': porto_dest,
                                     'CARREGAMENTO': carregamento,
                                     'EMBARQUE NAVIO': embarque,
                                     'SAIDA NAVIO': saida,
-                                    'PREVISAO CHEGADA PORTO DESTINO': previsao,
+                                    'PREVISAO PORTO DESTINO': previsao,
                                     'CHEGADA PORTO DESTINO': chegada,
                                     'CANAL RFB': canal_rfb,
                                     'LIBERAÇAO PORTO DESTINO': '',
-                                    'CHEGADA CIUDAD DEL ESTE PY': '',
-                                    'DESCARREGAMENTO': '',
-                                    'STATUS_FINAL': '' 
+                                    'CHEGADA PARAGUAY': '',
+                                    'DESCARREGAMENTO': ''
                                 }
-                                
                                 novo_df = pd.DataFrame([novo_tracking])
                                 st.session_state.df_tracking = pd.concat([st.session_state.df_tracking, novo_df], ignore_index=True)
                                 st.success("✅ Primeiro tracking adicionado!")
@@ -1346,7 +1538,7 @@ def dashboard_principal():
                 st.markdown("### 📅 Status dos Seus Containers")
                 for _, row in df_usuario.iterrows():
                     status_emoji = "🟢" if row['CANAL RFB'] == 'VERDE' else "🔴" if row['CANAL RFB'] == 'VERMELHO' else "⏳"
-                    previsao = row.get('PREVISAO CHEGADA PORTO DESTINO', 'Não informado')
+                    previsao = row.get('PREVISAO PORTO DESTINO') or "Não informado"
                     st.write(f"{status_emoji} **{row['CONTAINER']}** - Previsão: {previsao}")
     
     # Filtros
@@ -1397,108 +1589,128 @@ def dashboard_principal():
         # Mostrar dados - Versão Mobile-First
         st.markdown("### 📊 Dados dos Trackings:")
 
-        # Cards para mobile
+        # Cards com novo formato, status inteligente e transit times
         for idx, row in df_display.iterrows():
-            # Definir cores e emoji baseado no status
-            if 'VERDE' in str(row['CANAL RFB']):
-                card_color = "#e8f5e8"
-                border_color = "#28a745"
-                status_emoji = "🟢"
-            elif 'VERMELHO' in str(row['CANAL RFB']):
-                card_color = "#f8e8e8"
-                border_color = "#dc3545"
-                status_emoji = "🔴"
-            else:
-                card_color = "#fff8e1"
-                border_color = "#ffc107"
-                status_emoji = "⏳"
-            
-            # Usar container do Streamlit ao invés de HTML puro
+            status_texto, border_color, card_color = calcular_status(row)
+            tt = calcular_transit_times(row)
+
+            porto_destino = str(row.get('PORTO DESTINO', '') or '').strip() or 'Não informado'
+            canal = str(row.get('CANAL RFB', '') or '').strip().upper()
+
             with st.container():
+                # ── Cabeçalho do card ──
                 st.markdown(f"""
                 <div style='
-                    background-color: {card_color}; 
-                    border: 2px solid {border_color}; 
+                    background-color: {card_color};
+                    border: 2px solid {border_color};
                     border-radius: 10px;
-                    padding: 15px; 
-                    margin: 15px 0; 
-                    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                    padding: 14px 18px 10px 18px;
+                    margin: 14px 0 4px 0;
+                    box-shadow: 0 2px 6px rgba(0,0,0,0.08);
                 '>
-                    <h3 style='color: #000000; margin: 0 0 15px 0;'>
-                        {status_emoji} 📦 {row['CONTAINER']} - {row['CLIENTE']}
+                    <h3 style='color: #1a1a1a; margin: 0 0 4px 0; font-size: 1.1rem;'>
+                        📦 {row['CONTAINER']} &nbsp;—&nbsp; {row['CLIENTE']}
                     </h3>
+                    <p style='color: #444; margin: 0; font-size: 0.92rem;'>
+                        🏭 <strong>Porto de Destino:</strong> {porto_destino}
+                    </p>
                 </div>
                 """, unsafe_allow_html=True)
-                
-                # Usar colunas do Streamlit para os dados
-                col1, col2 = st.columns(2)
-                
-                with col1:
-                    st.write(f"**📊 Status:** {row.get('CANAL RFB', 'Pendente')}")
-                    st.write(f"**📅 Carregamento:** {row.get('CARREGAMENTO', 'Não informado')}")
-                    st.write(f"**🚢 Embarque:** {row.get('EMBARQUE NAVIO', 'Não informado')}")
-                    st.write(f"**📍 Previsão Porto Destino:** {row.get('PREVISAO CHEGADA PORTO DESTINO', 'Não informado')}")
-                
-                with col2:
-                    st.write(f"**✅ Chegada Porto Destino:** {row.get('CHEGADA PORTO DESTINO', 'Não informado')}")
-                    st.write(f"**🔓 Liberação:** {row.get('LIBERAÇAO PORTO DESTINO', 'Não informado')}")
-                    st.write(f"**🚛 Chegada Ciudad del Este:** {row.get('CHEGADA CIUDAD DEL ESTE PY', 'Não informado')}")
-                    st.write(f"**📦 Descarregamento:** {row.get('DESCARREGAMENTO', 'Não informado')}")
 
-                # ADICIONAR AQUI (depois do col2):
-                # Badge de status final
-                if row.get('STATUS_FINAL'):
-                    if 'SUCESSO' in row['STATUS_FINAL']:
-                        status_color = "#d4edda"  # Verde claro
-                        status_border = "#28a745"  # Verde
-                    elif 'PENDÊNCIAS' in row['STATUS_FINAL']:
-                        status_color = "#fff3cd"  # Amarelo claro  
-                        status_border = "#ffc107"  # Amarelo
-                    elif 'CANCELADO' in row['STATUS_FINAL']:
-                        status_color = "#f8d7da"  # Vermelho claro
-                        status_border = "#dc3545"  # Vermelho
+                col1, col2 = st.columns(2)
+
+                with col1:
+                    # Status
+                    canal_label = ""
+                    if canal == 'VERDE':
+                        canal_label = " &nbsp;|&nbsp; 🟢 Canal VERDE"
+                    elif canal == 'VERMELHO':
+                        canal_label = " &nbsp;|&nbsp; 🔴 Canal VERMELHO"
+                    st.markdown(f"**📊 Status:** {status_texto}{canal_label}")
+
+                    # Datas lado esquerdo
+                    st.write(f"**📅 Carregamento origem:** {row.get('CARREGAMENTO') or '—'}")
+                    st.write(f"**🚢 Saída navio porto origem:** {row.get('SAIDA NAVIO') or '—'}")
+                    st.write(f"**📍 Previsão Porto Destino:** {row.get('PREVISAO PORTO DESTINO') or '—'}")
+                    chegada_real = str(row.get('CHEGADA PORTO DESTINO') or '').strip()
+                    st.write(f"**✅ Chegada real Porto Destino:** {chegada_real or '—'}")
+
+                with col2:
+                    liberacao = str(row.get('LIBERAÇAO PORTO DESTINO') or '').strip()
+                    st.write(f"**🔓 Liberação Porto de destino:** {liberacao or '—'}")
+
+                    chegada_py = str(row.get('CHEGADA PARAGUAY') or '').strip()
+                    st.write(f"**🚛 Chegada Paraguay:** {chegada_py or '—'}")
+
+                    descarr = str(row.get('DESCARREGAMENTO') or '').strip()
+                    if descarr:
+                        st.write(f"**📦 Descarregamento:** {descarr} — ✅ FINALIZADO")
                     else:
-                        status_color = "#e2e3e5"  # Cinza
-                        status_border = "#6c757d"  # Cinza
-                        
-                    st.markdown(f"""
-                    <div style='background: {status_color}; border: 2px solid {status_border}; 
-                                 padding: 8px; border-radius: 5px; margin: 10px 0; text-align: center;'>
-                        <strong>{row['STATUS_FINAL']}</strong>
-                    </div>
-                    """, unsafe_allow_html=True)
-                
+                        st.write(f"**📦 Descarregamento:** —")
+
+                    # ── Transit Times ──
+                    st.markdown("---")
+                    st.markdown("**⏱️ Transit Times:**")
+
+                    if tt['transit_maritimo'] is not None:
+                        tipo_ref = "real ✅" if tt['transit_maritimo_real'] else "previsão 📍"
+                        st.write(f"🌊 Marítimo: **{tt['transit_maritimo']} dias** ({tipo_ref})")
+                    else:
+                        st.write("🌊 Marítimo: *aguardando datas*")
+
+                    if tt['transit_rodoviario'] is not None:
+                        st.write(f"🚛 Rodoviário: **{tt['transit_rodoviario']} dias**")
+                    else:
+                        st.write("🚛 Rodoviário: *aguardando datas*")
+
+                    if tt['tempo_total'] is not None:
+                        st.write(f"🗓️ Total da viagem: **{tt['tempo_total']} dias**")
+                    else:
+                        st.write("🗓️ Total da viagem: *em andamento*")
+
                 st.markdown("---")
 
-        # Opção de tabela tradicional
-        st.markdown("### 📊 Dados dos Trackings")
-        st.write(f"**Registros encontrados:** {len(df_filtrado)}")
-        
-        if not df_filtrado.empty:
-            # Criar uma versão simplificada dos dados para exibição
-            df_display_simples = df_filtrado.copy()
+        # OPÇÃO 2: Tabela simples (para quem prefere)
+        if st.checkbox("📊 Ver como Tabela Tradicional"):
+            # Criar tabela com contraste alto
+            html_table = """
+            <div style='overflow-x: auto; background-color: #ffffff; padding: 10px; border-radius: 5px;'>
+            <table style='width: 100%; border-collapse: collapse; font-size: 12px; background-color: #ffffff;'>
+            <thead>
+            <tr style='background-color: #f8f9fa;'>
+            """
             
-            # Renomear colunas para nomes mais curtos se necessário
-            df_display_simples = df_display_simples.rename(columns={
-                'PREVISAO CHEGADA PORTO DESTINO': 'PREVISAO',
-                'CHEGADA PORTO DESTINO': 'CHEGADA',
-                'LIBERAÇAO PORTO DESTINO': 'LIBERACAO',
-                'CHEGADA CIUDAD DEL ESTE PY': 'CHEGADA PY'
-            })
+            for col in df_display.columns:
+                html_table += f"<th style='border: 2px solid #000000; padding: 8px; text-align: left; color: #000000; font-weight: bold; background-color: #f8f9fa;'>{col}</th>"
             
-            # Exibir com configuração simples
-            st.dataframe(
-                df_display_simples,
-                use_container_width=True,
-                hide_index=True
-            )
-        else:
-            st.info("🔍 Nenhum registro encontrado com os filtros aplicados.")
+            html_table += "</tr></thead><tbody>"
+            
+            for idx, row in df_display.iterrows():
+                html_table += "<tr>"
+                for col in df_display.columns:
+                    valor = str(row[col]) if pd.notna(row[col]) else ""
+                    
+                    if col == 'CANAL RFB':
+                        if 'VERDE' in valor:
+                            bg_color = "#d4edda"
+                        elif 'VERMELHO' in valor:
+                            bg_color = "#f8d7da"
+                        else:
+                            bg_color = "#fff3cd"
+                    else:
+                        bg_color = "#ffffff"
+                    
+                    html_table += f"<td style='border: 1px solid #000000; padding: 6px; background-color: {bg_color}; color: #000000; font-weight: 500;'>{valor}</td>"
+                html_table += "</tr>"
+            
+            html_table += "</tbody></table></div>"
+            st.markdown(html_table, unsafe_allow_html=True)
 
         # Legenda
         st.info("🟢 Verde = Liberado | 🔴 Vermelho = Inspeção | ⏳ Pendente = Aguardando")
         
-        # Download dos dados
+               
+        # Download dos dados (SEM DUPLICAÇÃO)
         csv = df_filtrado.to_csv(index=False)
         nome_arquivo = f"tracking_todos_{datetime.now().strftime('%Y%m%d')}.csv" if usuario_info["tipo"] == "admin" else f"tracking_{usuario_info['nome'].replace(' ', '_')}_{datetime.now().strftime('%Y%m%d')}.csv"
         label_download = "💾 Baixar Todos os Dados (CSV)" if usuario_info["tipo"] == "admin" else "💾 Baixar Seus Dados (CSV)"
@@ -1518,25 +1730,26 @@ def dashboard_principal():
                 else:
                     with st.form("novo_tracking"):
                         col1, col2 = st.columns(2)
-                        
+
                         with col1:
                             clientes_disponiveis = list(st.session_state.clientes_db.keys())
                             cliente_selecionado = st.selectbox("Cliente *", clientes_disponiveis)
-                            container = st.text_input("Container *", placeholder="ex: TCLU1234567")
-                            carregamento = st.text_input("Carregamento", placeholder="DD/MM/AAAA")
-                            embarque = st.text_input("Embarque Navio", placeholder="DD/MM/AAAA")
-                            saida = st.text_input("Saída Navio", placeholder="DD/MM/AAAA")
-                            previsao = st.text_input("Previsão Chegada Porto Destino", placeholder="DD/MM/AAAA")
-                        
+                            container    = st.text_input("Container *", placeholder="ex: TCLU1234567")
+                            porto_dest   = st.text_input("Porto de Destino", placeholder="ex: Paranaguá - PR")
+                            carregamento = st.text_input("📅 Carregamento origem", placeholder="DD/MM/AAAA")
+                            embarque     = st.text_input("🚢 Embarque Navio", placeholder="DD/MM/AAAA")
+                            saida        = st.text_input("🚢 Saída Navio porto origem", placeholder="DD/MM/AAAA")
+
                         with col2:
-                            chegada = st.text_input("Chegada Porto Destino", placeholder="DD/MM/AAAA")
-                            canal_rfb = st.selectbox("Canal RFB", ['', 'VERDE', 'VERMELHO'])
-                            liberacao = st.text_input("Liberação Porto Destino", placeholder="DD/MM/AAAA")
-                            chegada_py = st.text_input("Chegada Ciudad del Este PY", placeholder="DD/MM/AAAA")
-                            descarregamento = st.text_input("Descarregamento", placeholder="DD/MM/AAAA")
-                        
+                            previsao     = st.text_input("📍 Previsão Porto Destino", placeholder="DD/MM/AAAA")
+                            chegada      = st.text_input("✅ Chegada real Porto Destino", placeholder="DD/MM/AAAA HH:MM")
+                            canal_rfb    = st.selectbox("🔍 Canal RFB", ['', 'VERDE', 'VERMELHO'])
+                            liberacao    = st.text_input("🔓 Liberação Porto de destino", placeholder="DD/MM/AAAA HH:MM")
+                            chegada_py   = st.text_input("🚛 Chegada Paraguay", placeholder="DD/MM/AAAA HH:MM")
+                            descarregamento = st.text_input("📦 Descarregamento", placeholder="DD/MM/AAAA")
+
                         submitted = st.form_submit_button("💾 Salvar Tracking", type="primary")
-                        
+
                         if submitted:
                             if not cliente_selecionado or not container:
                                 st.error("❌ Cliente e Container são obrigatórios!")
@@ -1544,17 +1757,17 @@ def dashboard_principal():
                                 novo_registro = {
                                     'CLIENTE': cliente_selecionado,
                                     'CONTAINER': container,
+                                    'PORTO DESTINO': porto_dest,
                                     'CARREGAMENTO': carregamento,
                                     'EMBARQUE NAVIO': embarque,
                                     'SAIDA NAVIO': saida,
-                                    'PREVISAO CHEGADA PORTO DESTINO': previsao,
+                                    'PREVISAO PORTO DESTINO': previsao,
                                     'CHEGADA PORTO DESTINO': chegada,
                                     'CANAL RFB': canal_rfb,
                                     'LIBERAÇAO PORTO DESTINO': liberacao,
-                                    'CHEGADA CIUDAD DEL ESTE PY': chegada_py,
+                                    'CHEGADA PARAGUAY': chegada_py,
                                     'DESCARREGAMENTO': descarregamento
                                 }
-                                
                                 novo_df = pd.DataFrame([novo_registro])
                                 st.session_state.df_tracking = pd.concat([st.session_state.df_tracking, novo_df], ignore_index=True)
                                 st.success("✅ Tracking adicionado!")
@@ -1585,59 +1798,41 @@ def dashboard_principal():
                         # Formulário de edição
                         with st.form("editar_tracking"):
                             col1, col2 = st.columns(2)
-                            
+
                             with col1:
                                 clientes_disponiveis = list(st.session_state.clientes_db.keys())
                                 cliente_atual_idx = clientes_disponiveis.index(registro['CLIENTE']) if registro['CLIENTE'] in clientes_disponiveis else 0
-                                edit_cliente = st.selectbox("Cliente", clientes_disponiveis, index=cliente_atual_idx)
-                                edit_container = st.text_input("Container", value=registro.get('CONTAINER', ''))
-                                edit_carregamento = st.text_input("Carregamento", value=registro.get('CARREGAMENTO', ''))
-                                edit_embarque = st.text_input("Embarque Navio", value=registro.get('EMBARQUE NAVIO', ''))
-                                edit_saida = st.text_input("Saída Navio", value=registro.get('SAIDA NAVIO', ''))
-                                edit_previsao = st.text_input("Previsão Chegada Porto Destino", value=registro.get('PREVISAO CHEGADA PORTO DESTINO', ''))
-                            
+                                edit_cliente      = st.selectbox("Cliente", clientes_disponiveis, index=cliente_atual_idx)
+                                edit_container    = st.text_input("Container", value=str(registro.get('CONTAINER', '')))
+                                edit_porto_dest   = st.text_input("Porto de Destino", value=str(registro.get('PORTO DESTINO', '')))
+                                edit_carregamento = st.text_input("📅 Carregamento origem", value=str(registro.get('CARREGAMENTO', '')))
+                                edit_embarque     = st.text_input("🚢 Embarque Navio", value=str(registro.get('EMBARQUE NAVIO', '')))
+                                edit_saida        = st.text_input("🚢 Saída Navio porto origem", value=str(registro.get('SAIDA NAVIO', '')))
+
                             with col2:
-                                edit_chegada = st.text_input("Chegada Porto Destino", value=registro.get('CHEGADA PORTO DESTINO', ''))
-                                edit_canal = st.selectbox("Canal RFB", ['', 'VERDE', 'VERMELHO'], 
-                                                         index=['', 'VERDE', 'VERMELHO'].index(registro.get('CANAL RFB', '')) if registro.get('CANAL RFB', '') in ['', 'VERDE', 'VERMELHO'] else 0)
-                                edit_liberacao = st.text_input("Liberação Porto Destino", value=registro.get('LIBERAÇAO PORTO DESTINO', ''))
-                                edit_chegada_py = st.text_input("Chegada Ciudad del Este PY", value=registro.get('CHEGADA CIUDAD DEL ESTE PY', ''))
-                                edit_descarregamento = st.text_input("Descarregamento", value=registro.get('DESCARREGAMENTO', ''))
-                                edit_status_final = st.selectbox("Status Final:", STATUS_FINAIS, 
-                                                                index=STATUS_FINAIS.index(registro.get('STATUS_FINAL', '')) if registro.get('STATUS_FINAL', '') in STATUS_FINAIS else 0)
-                                
-                            if st.form_submit_button("💾 Salvar Alterações", type="primary"):
+                                edit_previsao   = st.text_input("📍 Previsão Porto Destino", value=str(registro.get('PREVISAO PORTO DESTINO', '')))
+                                edit_chegada    = st.text_input("✅ Chegada real Porto Destino", value=str(registro.get('CHEGADA PORTO DESTINO', '')))
+                                canal_val       = str(registro.get('CANAL RFB', ''))
+                                edit_canal      = st.selectbox("🔍 Canal RFB", ['', 'VERDE', 'VERMELHO'],
+                                                               index=['', 'VERDE', 'VERMELHO'].index(canal_val) if canal_val in ['', 'VERDE', 'VERMELHO'] else 0)
+                                edit_liberacao  = st.text_input("🔓 Liberação Porto de destino", value=str(registro.get('LIBERAÇAO PORTO DESTINO', '')))
+                                edit_chegada_py = st.text_input("🚛 Chegada Paraguay", value=str(registro.get('CHEGADA PARAGUAY', '')))
+                                edit_descarr    = st.text_input("📦 Descarregamento", value=str(registro.get('DESCARREGAMENTO', '')))
+
+                            submitted_edit = st.form_submit_button("💾 Salvar Alterações", type="primary")
+
+                            if submitted_edit:
                                 if not edit_cliente or not edit_container:
                                     st.error("❌ Cliente e Container são obrigatórios!")
                                 else:
-                                    # Criar dicionário com os novos valores
-                                    novos_valores = {
-                                        'CLIENTE': edit_cliente,
-                                        'CONTAINER': edit_container,
-                                        'CARREGAMENTO': edit_carregamento,
-                                        'EMBARQUE NAVIO': edit_embarque,
-                                        'SAIDA NAVIO': edit_saida,
-                                        'PREVISAO CHEGADA PORTO DESTINO': edit_previsao,
-                                        'CHEGADA PORTO DESTINO': edit_chegada,
-                                        'CANAL RFB': edit_canal,
-                                        'LIBERAÇAO PORTO DESTINO': edit_liberacao,
-                                        'CHEGADA CIUDAD DEL ESTE PY': edit_chegada_py,
-                                        'DESCARREGAMENTO': edit_descarregamento
-                                    }
-                                    
-                                    # Adicionar STATUS_FINAL se existir
-                                    if 'edit_status_final' in locals():
-                                        novos_valores['STATUS_FINAL'] = edit_status_final
-                                    
-                                    # Atualizar usando o dicionário
-                                    for coluna, valor in novos_valores.items():
-                                        if coluna in st.session_state.df_tracking.columns:
-                                            st.session_state.df_tracking.loc[idx_selecionado, coluna] = valor
-                                    
+                                    st.session_state.df_tracking.loc[idx_selecionado] = [
+                                        edit_cliente, edit_container, edit_porto_dest,
+                                        edit_carregamento, edit_embarque, edit_saida,
+                                        edit_previsao, edit_chegada, edit_canal,
+                                        edit_liberacao, edit_chegada_py, edit_descarr
+                                    ]
                                     st.success("✅ Registro atualizado!")
                                     st.rerun()
-                                
-        
     else:
         st.info("🔍 Nenhum registro encontrado com os filtros aplicados.")
     
@@ -1654,9 +1849,9 @@ def dashboard_principal():
             with st.expander("Ver Containers no Canal Vermelho"):
                 for _, row in containers_vermelho.iterrows():
                     if usuario_info["tipo"] == "admin":
-                        st.write(f"🔴 **{row.get('CLIENTE', 'N/A')}** - Container: {row.get('CONTAINER', 'N/A')} - Previsão: {row.get('PREVISAO CHEGADA PORTO DESTINO', 'Não informado')}")
+                        st.write(f"🔴 **{row['CLIENTE']}** - Container: {row['CONTAINER']} - Previsão: {row.get('PREVISAO PORTO DESTINO') or '—'}")
                     else:
-                        st.write(f"🔴 **Container:** {row.get('CONTAINER', 'N/A')} - **Previsão:** {row.get('PREVISAO CHEGADA PORTO DESTINO', 'Não informado')}")
+                        st.write(f"🔴 **Container:** {row['CONTAINER']} - **Previsão:** {row.get('PREVISAO PORTO DESTINO') or '—'}")
 
 def main():
     """Função principal da aplicação"""
