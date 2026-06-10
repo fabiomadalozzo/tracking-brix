@@ -180,9 +180,10 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# 🔐 CONFIGURAÇÃO DO TOKEN GITHUB (APENAS VOCÊ PRECISA ALTERAR)
-# Cole seu token GitHub aqui - será usado automaticamente em qualquer computador
-GITHUB_TOKEN_CONFIGURADO = "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"  # Cole seu token aqui: ghp_xxxxxxxxxx
+# 🔐 CONFIGURAÇÃO DO TOKEN GITHUB
+# Se quiser fixar o token no código, cole aqui. Caso contrário, deixe vazio "".
+# O sistema salva o token automaticamente no computador após a primeira configuração.
+GITHUB_TOKEN_CONFIGURADO = ""  # ex: "ghp_seuTokenAqui"
 
 # FUNÇÕES PARA GERENCIAR TOKEN
 def obter_token_github():
@@ -280,11 +281,15 @@ COLUNAS = [
     'DESCARREGAMENTO'
 ]
 
-# Mapa de migração: colunas antigas → novas
+# Mapa de migração: colunas antigas → novas (inclui todos os formatos históricos)
 MIGRACAO_COLUNAS = {
+    # Nomes com "PARANAGUA"
     'PREVISAO CHEGADA PARANAGUA': 'PREVISAO PORTO DESTINO',
-    'CHEGADA PARANAGUA': 'CHEGADA PORTO DESTINO',
-    'LIBERAÇAO PARANAGUA': 'LIBERAÇAO PORTO DESTINO',
+    'CHEGADA PARANAGUA':          'CHEGADA PORTO DESTINO',
+    'LIBERAÇAO PARANAGUA':        'LIBERAÇAO PORTO DESTINO',
+    # Nome intermediário que apareceu em versão anterior
+    'PREVISAO CHEGADA PORTO DESTINO': 'PREVISAO PORTO DESTINO',
+    # Ciudad del Este
     'CHEGADA CIUDAD DEL ESTE PY': 'CHEGADA PARAGUAY',
 }
 
@@ -483,17 +488,40 @@ def colorir_linha(row):
         return ['color: #000000 !important;'] * len(row)
 
 def migrar_colunas_antigas(df):
-    """Migra dados de versões antigas para os novos nomes de colunas"""
-    df = df.rename(columns=MIGRACAO_COLUNAS)
+    """
+    Migra dados de versões antigas para os novos nomes de colunas.
+    Funciona com qualquer combinação de nomes antigos/novos/intermediários.
+    """
+    df = df.copy()
+
+    # Renomear colunas antigas → novas (sem sobrescrever se a nova já existe)
+    for col_antiga, col_nova in MIGRACAO_COLUNAS.items():
+        if col_antiga in df.columns:
+            if col_nova not in df.columns:
+                df.rename(columns={col_antiga: col_nova}, inplace=True)
+            else:
+                # Coluna nova já existe: preencher vazios da nova com valores da antiga
+                df[col_nova] = df[col_nova].fillna('').astype(str)
+                df[col_antiga] = df[col_antiga].fillna('').astype(str)
+                mask = (df[col_nova].str.strip() == '') | (df[col_nova].isin(['nan', 'None', 'NaT']))
+                df.loc[mask, col_nova] = df.loc[mask, col_antiga]
+                df.drop(columns=[col_antiga], inplace=True)
+
+    # Adicionar colunas que faltam com valor vazio
     for col in COLUNAS:
         if col not in df.columns:
             df[col] = ''
-    # Garantir ordem certa e apenas colunas conhecidas
-    cols_presentes = [c for c in COLUNAS if c in df.columns]
-    return df[cols_presentes]
+
+    # Retornar apenas as colunas oficiais, na ordem certa
+    return df[COLUNAS]
 
 def tem_valor(v):
     """Verifica se uma célula tem valor preenchido"""
+    # Garante valor escalar mesmo se vier como pandas Series (ex: colunas duplicadas)
+    if hasattr(v, 'iloc'):
+        v = v.iloc[0] if len(v) > 0 else ''
+    elif hasattr(v, 'item'):
+        v = v.item()
     return bool(v) and str(v).strip() not in ['', 'nan', 'None', 'NaT', '-']
 
 def calcular_status(row):
@@ -624,52 +652,34 @@ def sidebar_backup_system():
         
         # Se ainda não conseguiu configurar automaticamente
         if 'github_token_configurado' not in st.session_state:
-            # Verificar se é porque token no código não foi configurado
-            if not GITHUB_TOKEN_CONFIGURADO:
-                st.info("🔐 **Para Desenvolvedores:**")
-                st.markdown("""
-                **🛠️ Configuração necessária no código:**
-                
-                1. Cole seu token GitHub na variável:
-                ```python
-                GITHUB_TOKEN_CONFIGURADO = "ghp_seu_token_aqui"
-                ```
-                
-                2. Isso fará o sistema funcionar automaticamente em qualquer computador!
-                """)
-            else:
-                st.error("🔐 **Token configurado mas inválido**")
-                st.markdown("Verifique se o token GitHub está correto no código.")
-            
-            # Opção manual como fallback
-            with st.expander("⚙️ Configuração Manual (Emergência)", expanded=False):
-                st.markdown("""
-                **🔧 Se precisar configurar manualmente:**
-                1. Acesse: https://github.com/settings/tokens
-                2. Clique "Generate new token (classic)"  
-                3. Nome: "BRIX Backup"
-                4. Marque: ✅ repo
-                5. Cole o token abaixo:
-                """)
-                
-                token_input = st.text_input(
-                    "🔑 Token GitHub:", 
-                    type="password", 
-                    placeholder="ghp_emergencia_token...",
-                    help="Só use se necessário"
-                )
-                
-                if st.button("💾 Usar Token Manual") and token_input:
-                    with st.spinner("🔍 Testando token..."):
-                        if testar_token_github(token_input):
-                            salvar_token_persistente(token_input)
-                            st.session_state.github_token = token_input
-                            st.session_state.github_token_configurado = True
-                            st.success("✅ Configurado manualmente!")
-                            st.rerun()
-                        else:
-                            st.error("❌ Token inválido!")
-            
+            st.warning("🔐 **Token GitHub não configurado ou expirado**")
+            st.markdown("""
+            **Como gerar um token PERMANENTE:**
+            1. Acesse 👉 [github.com/settings/tokens](https://github.com/settings/tokens)
+            2. Clique **"Generate new token (classic)"**
+            3. **Note:** `BRIX Backup`
+            4. **Expiration:** selecione **"No expiration"** ⬅️ importante!
+            5. Marque: ✅ **repo**
+            6. Clique **"Generate token"** e copie o token
+            """)
+
+            token_input = st.text_input(
+                "🔑 Cole seu token GitHub aqui:",
+                type="password",
+                placeholder="ghp_...",
+                help="O token será salvo permanentemente neste computador"
+            )
+
+            if st.button("💾 Salvar Token Permanentemente", type="primary") and token_input:
+                with st.spinner("🔍 Verificando token..."):
+                    if testar_token_github(token_input):
+                        salvar_token_persistente(token_input)
+                        st.session_state.github_token = token_input
+                        st.session_state.github_token_configurado = True
+                        st.success("✅ Token salvo! Nunca mais precisará configurar neste computador.")
+                        st.rerun()
+                    else:
+                        st.error("❌ Token inválido! Verifique se copiou corretamente.")
             return
         
         # SISTEMA CONFIGURADO E FUNCIONANDO
@@ -1849,16 +1859,16 @@ def dashboard_principal():
             with st.expander("Ver Containers no Canal Vermelho"):
                 for _, row in containers_vermelho.iterrows():
                     if usuario_info["tipo"] == "admin":
-                        st.write(f"🔴 **{row['CLIENTE']}** - Container: {row['CONTAINER']} - Previsão: {row.get('PREVISAO PORTO DESTINO') or '—'}")
+                        st.write(f"🔴 **{row['CLIENTE']}** - Container: {row['CONTAINER']} - Previsao: {row.get('PREVISAO PORTO DESTINO') or '---'}")
                     else:
-                        st.write(f"🔴 **Container:** {row['CONTAINER']} - **Previsão:** {row.get('PREVISAO PORTO DESTINO') or '—'}")
+                        st.write(f"🔴 **Container:** {row['CONTAINER']} - **Previsao:** {row.get('PREVISAO PORTO DESTINO') or '---'}")
 
 def main():
-    """Função principal da aplicação"""
+    """Funcao principal da aplicacao"""
     # Sempre inicializar o sistema primeiro
     inicializar_sistema()
     
-    # Verificar se está logado
+    # Verificar se esta logado
     if not st.session_state.logado:
         tela_login()
     else:
