@@ -516,49 +516,40 @@ def migrar_colunas_antigas(df):
     return df[COLUNAS]
 
 def tem_valor(v):
-    """Verifica se uma célula tem valor preenchido"""
+    """Verifica se uma célula tem valor preenchido (ignora textos não-data)"""
     # Garante valor escalar mesmo se vier como pandas Series (ex: colunas duplicadas)
     if hasattr(v, 'iloc'):
         v = v.iloc[0] if len(v) > 0 else ''
     elif hasattr(v, 'item'):
         v = v.item()
-    return bool(v) and str(v).strip() not in ['', 'nan', 'None', 'NaT', '-']
+    VAZIOS = {'', 'nan', 'none', 'nat', '-', 'aguardando', 'aguard.', 'n/a', 'pendente', 'não informado'}
+    return bool(v) and str(v).strip().lower() not in VAZIOS
 
 def calcular_status(row):
     """
     Determina o status atual do container baseado nas datas preenchidas.
+    Sequência: FINALIZADO → ADUANA PY → NA RODOVIA → NO PORTO BR → NO MAR → EMBARQUE → AGUARDANDO
     Retorna: (texto_status, cor_borda, cor_fundo)
     """
-    canal = str(row.get('CANAL RFB', '')).strip().upper()
-
     if tem_valor(row.get('DESCARREGAMENTO')):
         return '✅ FINALIZADO', '#27ae60', '#d5f4e6'
 
     if tem_valor(row.get('CHEGADA PARAGUAY')):
-        return '🚛 NA RODOVIA', '#e67e22', '#fef3cd'
+        return '🛃 NA ADUANA DE DESTINO (PARAGUAY)', '#8e44ad', '#f5eef8'
 
     if tem_valor(row.get('LIBERAÇAO PORTO DESTINO')):
         return '🚛 NA RODOVIA', '#e67e22', '#fef3cd'
 
     if tem_valor(row.get('CHEGADA PORTO DESTINO')):
-        if canal == 'VERDE':
-            return '🟢 VERDE', '#27ae60', '#d5f4e6'
-        elif canal == 'VERMELHO':
-            return '🔴 VERMELHO', '#e74c3c', '#fadbd8'
-        return '⚓ NO PORTO', '#3498db', '#d6eaf8'
+        return '⚓ NO PORTO BRASIL', '#2980b9', '#d6eaf8'
 
     if tem_valor(row.get('SAIDA NAVIO')):
-        return '🌊 NO MAR', '#2980b9', '#d6eaf8'
-
-    if canal == 'VERDE':
-        return '🟢 VERDE', '#27ae60', '#d5f4e6'
-    elif canal == 'VERMELHO':
-        return '🔴 VERMELHO', '#e74c3c', '#fadbd8'
+        return '🌊 NO MAR', '#1a5276', '#d4e6f1'
 
     if tem_valor(row.get('CARREGAMENTO')):
         return '🚢 AGUARD. EMBARQUE', '#7f8c8d', '#f2f3f4'
 
-    return '⏳ AGUARDANDO', '#95a5a6', '#f2f3f4'
+    return '⏳ AGUARDANDO', '#95a5a6', '#f4f6f7'
 
 def calcular_transit_times(row):
     """
@@ -1630,33 +1621,39 @@ def dashboard_principal():
                 col1, col2 = st.columns(2)
 
                 with col1:
-                    # Status
-                    canal_label = ""
-                    if canal == 'VERDE':
-                        canal_label = " &nbsp;|&nbsp; 🟢 Canal VERDE"
-                    elif canal == 'VERMELHO':
-                        canal_label = " &nbsp;|&nbsp; 🔴 Canal VERMELHO"
-                    st.markdown(f"**📊 Status:** {status_texto}{canal_label}")
+                    # Status — linha principal
+                    st.markdown(f"**📊 Status:** {status_texto}")
+
+                    # Canal RFB — linha própria
+                    canal_raw = str(df_filtrado.loc[idx, 'CANAL RFB'] if idx in df_filtrado.index else row.get('CANAL RFB', '')).strip().upper()
+                    if canal_raw == 'VERDE':
+                        st.markdown("**📋 Canal RFB:** 🟢 VERDE")
+                    elif canal_raw == 'VERMELHO':
+                        st.markdown("**📋 Canal RFB:** 🔴 VERMELHO")
+                    else:
+                        st.markdown("**📋 Canal RFB:** ⏳ Aguardando")
 
                     # Datas lado esquerdo
-                    st.write(f"**📅 Carregamento origem:** {row.get('CARREGAMENTO') or '—'}")
-                    st.write(f"**🚢 Saída navio porto origem:** {row.get('SAIDA NAVIO') or '—'}")
-                    st.write(f"**📍 Previsão Porto Destino:** {row.get('PREVISAO PORTO DESTINO') or '—'}")
-                    chegada_real = str(row.get('CHEGADA PORTO DESTINO') or '').strip()
-                    st.write(f"**✅ Chegada real Porto Destino:** {chegada_real or '—'}")
+                    def fmt_data(val):
+                        v = str(val or '').strip()
+                        vazios = {'', 'nan', 'none', 'nat', '-', 'aguardando', 'aguard.', 'n/a', 'pendente'}
+                        return v if v.lower() not in vazios else '⏳ Aguardando'
+
+                    st.write(f"**📅 Carregamento origem:** {fmt_data(row.get('CARREGAMENTO'))}")
+                    st.write(f"**🚢 Saída navio porto origem:** {fmt_data(row.get('SAIDA NAVIO'))}")
+                    st.write(f"**📍 Previsão Porto Destino:** {fmt_data(row.get('PREVISAO PORTO DESTINO'))}")
+                    st.write(f"**⚓ Chegada real Porto Destino:** {fmt_data(row.get('CHEGADA PORTO DESTINO'))}")
 
                 with col2:
-                    liberacao = str(row.get('LIBERAÇAO PORTO DESTINO') or '').strip()
-                    st.write(f"**🔓 Liberação Porto de destino:** {liberacao or '—'}")
+                    st.write(f"**🔓 Liberação Porto de destino:** {fmt_data(row.get('LIBERAÇAO PORTO DESTINO'))}")
+                    st.write(f"**🛃 Chegada Aduana Paraguay:** {fmt_data(row.get('CHEGADA PARAGUAY'))}")
 
-                    chegada_py = str(row.get('CHEGADA PARAGUAY') or '').strip()
-                    st.write(f"**🚛 Chegada Paraguay:** {chegada_py or '—'}")
-
-                    descarr = str(row.get('DESCARREGAMENTO') or '').strip()
-                    if descarr:
-                        st.write(f"**📦 Descarregamento:** {descarr} — ✅ FINALIZADO")
+                    descarr_val = str(row.get('DESCARREGAMENTO') or '').strip()
+                    descarr_vazios = {'', 'nan', 'none', 'nat', '-', 'aguardando', 'aguard.', 'n/a', 'pendente'}
+                    if descarr_val.lower() not in descarr_vazios:
+                        st.write(f"**📦 Descarregamento:** {descarr_val} ✅")
                     else:
-                        st.write(f"**📦 Descarregamento:** —")
+                        st.write(f"**📦 Descarregamento:** ⏳ Aguardando")
 
                     # ── Transit Times ──
                     st.markdown("---")
